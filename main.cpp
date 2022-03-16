@@ -4,7 +4,8 @@
 #include "chunk.h"
 #include "debug.h"
 
-int main(int argc, const char* arv[]) {
+int main(int argc, const char *arv[])
+{
     Chunk chunk;
     initChunk(&chunk);
 
