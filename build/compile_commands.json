@@ -1,0 +1,27 @@
+[
+{
+  "directory": "/Users/joshuaxu/lox_cplusplus_part_two/build",
+  "command": "/usr/bin/clang++   -g -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX12.1.sdk -o CMakeFiles/lox_part_2.dir/main.cpp.o -c /Users/joshuaxu/lox_cplusplus_part_two/main.cpp",
+  "file": "/Users/joshuaxu/lox_cplusplus_part_two/main.cpp"
+},
+{
+  "directory": "/Users/joshuaxu/lox_cplusplus_part_two/build",
+  "command": "/usr/bin/clang++   -g -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX12.1.sdk -o CMakeFiles/lox_part_2.dir/chunk.cpp.o -c /Users/joshuaxu/lox_cplusplus_part_two/chunk.cpp",
+  "file": "/Users/joshuaxu/lox_cplusplus_part_two/chunk.cpp"
+},
+{
+  "directory": "/Users/joshuaxu/lox_cplusplus_part_two/build",
+  "command": "/usr/bin/clang++   -g -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX12.1.sdk -o CMakeFiles/lox_part_2.dir/memory.cpp.o -c /Users/joshuaxu/lox_cplusplus_part_two/memory.cpp",
+  "file": "/Users/joshuaxu/lox_cplusplus_part_two/memory.cpp"
+},
+{
+  "directory": "/Users/joshuaxu/lox_cplusplus_part_two/build",
+  "command": "/usr/bin/clang++   -g -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX12.1.sdk -o CMakeFiles/lox_part_2.dir/debug.cpp.o -c /Users/joshuaxu/lox_cplusplus_part_two/debug.cpp",
+  "file": "/Users/joshuaxu/lox_cplusplus_part_two/debug.cpp"
+},
+{
+  "directory": "/Users/joshuaxu/lox_cplusplus_part_two/build",
+  "command": "/usr/bin/clang++   -g -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX12.1.sdk -o CMakeFiles/lox_part_2.dir/value.cpp.o -c /Users/joshuaxu/lox_cplusplus_part_two/value.cpp",
+  "file": "/Users/joshuaxu/lox_cplusplus_part_two/value.cpp"
+}
+]
