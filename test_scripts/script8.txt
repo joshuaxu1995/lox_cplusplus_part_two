@@ -1,0 +1,22 @@
+class Egotist {
+
+    init(name, id, age) {
+        print name;
+        print id + age;
+    }
+
+    speak() {
+        print this;
+    }
+
+    yell() {
+        print "YOU ARE A DIMWIT";
+    }
+
+}
+
+var method = Egotist("jimmy", 235, 14).speak;
+method();
+
+var chad = Egotist("chad", 52342341, 25);
+chad.yell();
