@@ -9,6 +9,19 @@ static void resetStack() {
     vm.stackTop = vm.stack;
 }
 
+static void runtimeError(const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+    vfprintf(stderr, format, args);
+    va_end(args);
+    fputs("\n", stderr);
+
+    size_t instruction = vm.ip - vm.chunk->code - 1;
+    int line = vm.chunk->lines[instruction];
+    fprintf(stderr, "[line %d] in script\n", line);
+    resetStack();
+}
+
 void initVM() {
     resetStack();
 }
@@ -25,6 +38,14 @@ void push(Value value){
 Value pop() {
     vm.stackTop--;
     return *vm.stackTop;
+}
+
+Value peek(int distance){
+    return vm.stackTop[-1 - distance];
+}
+
+static bool isFalsey(Value value) {
+    return isNil(value) || (isBool(value) && !asBool(value));
 }
 
 u_int8_t readByte(){
@@ -47,13 +68,19 @@ void debugTraceExecution(){
 }
 
 template<typename T>
-void binaryOp(T func){
+InterpretResult binaryOp(T func){
     while (true){
-        double b = pop();
-        double a = pop();
-        push(func(a,b));
+        if (!isNumber(peek(0)) || !isNumber(peek(1))){
+            runtimeError("Operands must be numbers.");
+            return INTERPRET_RUNTIME_ERROR;
+        }
+        double b = asNumber(pop());
+        double a = asNumber(pop());
+        //TODO: Change depending on the type
+        push(numberVal(func(a,b)));
         break;
     }
+    return INTERPRET_OK;
 }
 
 struct Add
@@ -84,6 +111,20 @@ struct Divide
     }
 };
 
+struct GreaterThan
+{
+    bool operator() (double l, double r){
+        return l > r;
+    }
+};
+
+struct LessThan
+{
+    bool operator() (double l, double r){
+        return l < r;
+    }
+};
+
 static InterpretResult run() {
     for (;;){
         debugTraceExecution();
@@ -101,6 +142,26 @@ static InterpretResult run() {
                 printf("\n");
                 break;
             }
+            case OP_NIL:
+                push(nilVal());
+                break;
+            case OP_TRUE:
+                push(boolVal(true));
+                break;
+            case OP_FALSE:
+                push(boolVal(false));
+                break;
+            case OP_EQUAL: {
+                Value b = pop();
+                Value a = pop();
+                push(boolVal(valuesEqual(a, b)));
+            }
+            case OP_GREATER:
+                binaryOp(GreaterThan());
+                break;
+            case OP_LESS:
+                binaryOp(LessThan());
+                break;
             case OP_ADD: {
                 binaryOp(Add());
                 break;
@@ -117,8 +178,16 @@ static InterpretResult run() {
                 binaryOp(Divide());
                 break;
             }
+            case OP_NOT: {
+                push(boolVal(isFalsey(pop())));
+                break;
+            }
             case OP_NEGATE: {
-                push(-pop());
+                if (!isNumber(peek(0))){
+                    runtimeError("Operand must be a number.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                push(numberVal(-asNumber(pop())));
                 break;
             }
         }
