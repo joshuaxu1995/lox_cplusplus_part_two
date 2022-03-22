@@ -41,7 +41,8 @@ Value pop() {
 }
 
 Value peek(int distance){
-    return vm.stackTop[-1 - distance];
+    Value val = vm.stackTop[-1 - distance];
+    return val;
 }
 
 static bool isFalsey(Value value) {
@@ -68,7 +69,7 @@ void debugTraceExecution(){
 }
 
 template<typename T>
-InterpretResult binaryOp(T func){
+InterpretResult binaryOp(ValueType type, T func){
     while (true){
         if (!isNumber(peek(0)) || !isNumber(peek(1))){
             runtimeError("Operands must be numbers.");
@@ -77,7 +78,11 @@ InterpretResult binaryOp(T func){
         double b = asNumber(pop());
         double a = asNumber(pop());
         //TODO: Change depending on the type
-        push(numberVal(func(a,b)));
+        if (type == VAL_BOOL){
+            push(boolVal(func(a,b)));
+        } else if (type == VAL_NUMBER){
+            push(numberVal(func(a,b)));
+        }
         break;
     }
     return INTERPRET_OK;
@@ -127,7 +132,7 @@ struct LessThan
 
 static InterpretResult run() {
     for (;;){
-        debugTraceExecution();
+        //debugTraceExecution();
         u_int8_t instruction;
         switch(instruction = readByte()){
             case OP_RETURN: {
@@ -155,27 +160,40 @@ static InterpretResult run() {
                 Value b = pop();
                 Value a = pop();
                 push(boolVal(valuesEqual(a, b)));
+                break;
             }
             case OP_GREATER:
-                binaryOp(GreaterThan());
+                if (binaryOp(VAL_BOOL, GreaterThan()) == INTERPRET_RUNTIME_ERROR){
+                    return INTERPRET_RUNTIME_ERROR;
+                }
                 break;
             case OP_LESS:
-                binaryOp(LessThan());
+                if (binaryOp(VAL_BOOL, LessThan()) == INTERPRET_RUNTIME_ERROR){
+                    return INTERPRET_RUNTIME_ERROR;
+                }
                 break;
             case OP_ADD: {
-                binaryOp(Add());
+                if (binaryOp(VAL_NUMBER, Add()) == INTERPRET_RUNTIME_ERROR){
+                    return INTERPRET_RUNTIME_ERROR;
+                }
                 break;
             }
             case OP_SUBTRACT: {
-                binaryOp(Subtract());
+                if (binaryOp(VAL_NUMBER, Subtract()) == INTERPRET_RUNTIME_ERROR){
+                    return INTERPRET_RUNTIME_ERROR;
+                }
                 break;
             }
             case OP_MULTIPLY: {
-                binaryOp(Multiply());
+                if (binaryOp(VAL_NUMBER, Multiply()) == INTERPRET_RUNTIME_ERROR){
+                    return INTERPRET_RUNTIME_ERROR;
+                }
                 break;
             }
             case OP_DIVIDE: {
-                binaryOp(Divide());
+                if (binaryOp(VAL_NUMBER, Divide()) == INTERPRET_RUNTIME_ERROR){
+                    return INTERPRET_RUNTIME_ERROR;
+                }
                 break;
             }
             case OP_NOT: {

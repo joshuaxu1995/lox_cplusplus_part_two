@@ -203,8 +203,14 @@ static void unary() {
     parsePrecedence(PREC_UNARY);
 
     switch (operatorType) {
-        case TOKEN_BANG: emitByte(OP_NOT); break;
-        case TOKEN_MINUS: emitByte(OP_NEGATE); break;
+        case TOKEN_BANG: {
+            emitByte(OP_NOT); 
+            break;
+        }
+        case TOKEN_MINUS: {
+            emitByte(OP_NEGATE); 
+            break;
+        }
         default: return;
     }
 }
