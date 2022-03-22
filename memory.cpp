@@ -1,4 +1,5 @@
 #include "memory.h"
+#include "vm.h"
 
 int growCapacity(int capacity)
 {
@@ -19,4 +20,24 @@ void *reallocate(void *pointer, size_t oldSize, size_t newSize)
         exit(1);
     }
     return result;
+}
+
+static void freeObject(Obj* object) {
+    switch (object->type) {
+        case OBJ_STRING: {
+            ObjString* string = (ObjString*) object;
+            freeArray<char>(string->chars, string->length + 1);
+            free<Obj>(object);
+            break;
+        }
+    }
+}
+
+void freeObjects() {
+    Obj* object = vm.objects;
+    while (object != NULL) {
+        Obj* next = object->next;
+        freeObject(object);
+        object = next;
+    }
 }
