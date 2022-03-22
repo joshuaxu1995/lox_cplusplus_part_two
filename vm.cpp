@@ -9,6 +9,19 @@ static void resetStack() {
     vm.stackTop = vm.stack;
 }
 
+static void runtimeError(const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+    vfprintf(stderr, format, args);
+    va_end(args);
+    fputs("\n", stderr);
+
+    size_t instruction = vm.ip - vm.chunk->code - 1;
+    int line = vm.chunk->lines[instruction];
+    fprintf(stderr, "[line %d] in script\n", line);
+    resetStack();
+}
+
 void initVM() {
     resetStack();
 }
@@ -25,6 +38,15 @@ void push(Value value){
 Value pop() {
     vm.stackTop--;
     return *vm.stackTop;
+}
+
+Value peek(int distance){
+    Value val = vm.stackTop[-1 - distance];
+    return val;
+}
+
+static bool isFalsey(Value value) {
+    return isNil(value) || (isBool(value) && !asBool(value));
 }
 
 u_int8_t readByte(){
@@ -47,13 +69,23 @@ void debugTraceExecution(){
 }
 
 template<typename T>
-void binaryOp(T func){
+InterpretResult binaryOp(ValueType type, T func){
     while (true){
-        double b = pop();
-        double a = pop();
-        push(func(a,b));
+        if (!isNumber(peek(0)) || !isNumber(peek(1))){
+            runtimeError("Operands must be numbers.");
+            return INTERPRET_RUNTIME_ERROR;
+        }
+        double b = asNumber(pop());
+        double a = asNumber(pop());
+        //TODO: Change depending on the type
+        if (type == VAL_BOOL){
+            push(boolVal(func(a,b)));
+        } else if (type == VAL_NUMBER){
+            push(numberVal(func(a,b)));
+        }
         break;
     }
+    return INTERPRET_OK;
 }
 
 struct Add
@@ -84,6 +116,20 @@ struct Divide
     }
 };
 
+struct GreaterThan
+{
+    bool operator() (double l, double r){
+        return l > r;
+    }
+};
+
+struct LessThan
+{
+    bool operator() (double l, double r){
+        return l < r;
+    }
+};
+
 static InterpretResult run() {
     for (;;){
         debugTraceExecution();
@@ -101,24 +147,65 @@ static InterpretResult run() {
                 printf("\n");
                 break;
             }
+            case OP_NIL:
+                push(nilVal());
+                break;
+            case OP_TRUE:
+                push(boolVal(true));
+                break;
+            case OP_FALSE:
+                push(boolVal(false));
+                break;
+            case OP_EQUAL: {
+                Value b = pop();
+                Value a = pop();
+                push(boolVal(valuesEqual(a, b)));
+                break;
+            }
+            case OP_GREATER:
+                if (binaryOp(VAL_BOOL, GreaterThan()) == INTERPRET_RUNTIME_ERROR){
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                break;
+            case OP_LESS:
+                if (binaryOp(VAL_BOOL, LessThan()) == INTERPRET_RUNTIME_ERROR){
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                break;
             case OP_ADD: {
-                binaryOp(Add());
+                if (binaryOp(VAL_NUMBER, Add()) == INTERPRET_RUNTIME_ERROR){
+                    return INTERPRET_RUNTIME_ERROR;
+                }
                 break;
             }
             case OP_SUBTRACT: {
-                binaryOp(Subtract());
+                if (binaryOp(VAL_NUMBER, Subtract()) == INTERPRET_RUNTIME_ERROR){
+                    return INTERPRET_RUNTIME_ERROR;
+                }
                 break;
             }
             case OP_MULTIPLY: {
-                binaryOp(Multiply());
+                if (binaryOp(VAL_NUMBER, Multiply()) == INTERPRET_RUNTIME_ERROR){
+                    return INTERPRET_RUNTIME_ERROR;
+                }
                 break;
             }
             case OP_DIVIDE: {
-                binaryOp(Divide());
+                if (binaryOp(VAL_NUMBER, Divide()) == INTERPRET_RUNTIME_ERROR){
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                break;
+            }
+            case OP_NOT: {
+                push(boolVal(isFalsey(pop())));
                 break;
             }
             case OP_NEGATE: {
-                push(-pop());
+                if (!isNumber(peek(0))){
+                    runtimeError("Operand must be a number.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                push(numberVal(-asNumber(pop())));
                 break;
             }
         }
