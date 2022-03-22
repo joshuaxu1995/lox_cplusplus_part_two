@@ -15,6 +15,7 @@ struct ObjString {
     Obj obj;
     int length;
     char* chars;
+    uint32_t hash;
 };
 
 static Obj* allocateObject(size_t size, ObjType type);

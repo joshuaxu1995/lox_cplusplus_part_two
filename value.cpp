@@ -104,10 +104,7 @@ bool valuesEqual(Value a, Value b){
         case VAL_NUMBER:
             return asNumber(a) == asNumber(b);
         case VAL_OBJ: {
-            ObjString* aString = asString(a);
-            ObjString* bString = asString(b);
-            return aString->length == bString->length &&
-                memcmp(aString->chars, bString->chars, aString->length) == 0;
+            return asObj(a) == asObj(b);
         }
         default: 
             return false;
