@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "vm.h"
 #include "compiler.h"
 #include "common.h"
@@ -24,10 +26,11 @@ static void runtimeError(const char* format, ...) {
 
 void initVM() {
     resetStack();
+    vm.objects = NULL;
 }
 
 void freeVM() {
-
+    freeObjects();
 }
 
 void push(Value value){
@@ -47,6 +50,19 @@ Value peek(int distance){
 
 static bool isFalsey(Value value) {
     return isNil(value) || (isBool(value) && !asBool(value));
+}
+
+static void concatenate() {
+    ObjString* b = asString(pop());
+    ObjString* a = asString(pop());
+    int length = a->length + b->length;
+    char* chars = allocate<char>(length + 1);
+    memcpy(chars, a->chars, a->length);
+    memcpy(chars + a->length, b->chars, b->length);
+    chars[length] = '\0';
+
+    ObjString* result = takeString(chars, length);
+    push(objVal((Obj*) result));
 }
 
 u_int8_t readByte(){
@@ -173,7 +189,14 @@ static InterpretResult run() {
                 }
                 break;
             case OP_ADD: {
-                if (binaryOp(VAL_NUMBER, Add()) == INTERPRET_RUNTIME_ERROR){
+                if (isString(peek(0)) && isString(peek(1))){
+                    concatenate();
+                } else if (isNumber(peek(0)) && isNumber(peek(1))){
+                    double b = asNumber(pop());
+                    double a = asNumber(pop());
+                    push(numberVal(a + b));
+                } else{
+                    runtimeError("Operands must be two numbers or two strings.");
                     return INTERPRET_RUNTIME_ERROR;
                 }
                 break;

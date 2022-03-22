@@ -1,7 +1,13 @@
 #include <stdio.h>
+#include <string.h>
 
+#include "object.h"
 #include "memory.h"
 #include "value.h"
+
+Value objVal(Obj* obj){
+    return (Value) {VAL_OBJ, {.obj = obj}};
+}
 
 Value boolVal(bool val){
     return (Value) {VAL_BOOL, {.boolean = val}};
@@ -15,11 +21,19 @@ Value numberVal(double val){
     return (Value) {VAL_NUMBER, {.number = val}};
 }
 
+Obj* asObj(Value value){
+    return value.as.obj;
+}
+
 bool asBool(Value value){
     return value.as.boolean;
 }
 double asNumber(Value value){
     return value.as.number;
+}
+
+bool isObj(Value value){
+    return value.type == VAL_OBJ;
 }
 
 bool isBool(Value value){
@@ -72,6 +86,9 @@ void printValue(Value value)
         case VAL_NUMBER:
             printf("%g", asNumber(value));
             break;
+        case VAL_OBJ:
+            printObject(value);
+            break;
     }
 }
 
@@ -86,6 +103,12 @@ bool valuesEqual(Value a, Value b){
             return true;
         case VAL_NUMBER:
             return asNumber(a) == asNumber(b);
+        case VAL_OBJ: {
+            ObjString* aString = asString(a);
+            ObjString* bString = asString(b);
+            return aString->length == bString->length &&
+                memcmp(aString->chars, bString->chars, aString->length) == 0;
+        }
         default: 
             return false;
     }
