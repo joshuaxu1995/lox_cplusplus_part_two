@@ -132,7 +132,7 @@ struct LessThan
 
 static InterpretResult run() {
     for (;;){
-        //debugTraceExecution();
+        debugTraceExecution();
         u_int8_t instruction;
         switch(instruction = readByte()){
             case OP_RETURN: {
