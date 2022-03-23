@@ -479,16 +479,15 @@ static void ifStatement() {
     int thenJump = emitJump(OP_JUMP_IF_FALSE);
     emitByte(OP_POP);
     statement();
-
-    int elseJump = emitJump(OP_JUMP);
     patchJump(thenJump);
-    emitByte(OP_POP);
 
     if (match(TOKEN_ELSE)){
         statement();
     }
 
+    int elseJump = emitJump(OP_JUMP);
     patchJump(elseJump);
+    emitByte(OP_POP);
 }
 
 static void forStatement() {
