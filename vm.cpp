@@ -190,6 +190,17 @@ static InterpretResult run() {
             case OP_POP:
                 pop();
                 break;
+            case OP_GET_LOCAL: {
+                uint8_t slot = readByte();
+                std::cout << "Reading slot: " << +slot << std::endl;
+                push(vm.stack[slot]);
+                break;
+            }
+            case OP_SET_LOCAL: {
+                uint8_t slot = readByte();
+                vm.stack[slot] = peek(0);
+                break;
+            }
             case OP_GET_GLOBAL: {
                 ObjString* name = readString();
                 Value value;
