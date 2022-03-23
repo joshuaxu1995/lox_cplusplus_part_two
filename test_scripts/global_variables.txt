@@ -1,0 +1,9 @@
+var beverage = "cafe au lait";
+var breakfast = "beignets with " + beverage;
+print breakfast;
+breakfast = breakfast + ", with my beautiful girlfriend";
+print breakfast;
+var mommy = "hi, " + breakfast;
+mommy = "its mom, " + mommy;
+print(mommy + ", be safe though");
+a * b = mommy;

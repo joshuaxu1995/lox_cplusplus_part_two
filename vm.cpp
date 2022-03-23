@@ -27,10 +27,12 @@ static void runtimeError(const char* format, ...) {
 void initVM() {
     resetStack();
     vm.objects = NULL;
+    initTable(&vm.globals);
     initTable(&vm.strings);
 }
 
 void freeVM() {
+    freeTable(&vm.globals);
     freeTable(&vm.strings);
     freeObjects();
 }
@@ -72,7 +74,13 @@ u_int8_t readByte(){
 }
 
 Value readConstant(){
-    return vm.chunk->constants.values[readByte()];
+    u_int8_t byteNum = readByte();
+    return vm.chunk->constants.values[byteNum];
+}
+
+ObjString* readString(){
+    Value value = readConstant();
+    return asString(value);
 }
 
 void debugTraceExecution(){
@@ -150,18 +158,23 @@ struct LessThan
 
 static InterpretResult run() {
     for (;;){
-        debugTraceExecution();
+        // debugTraceExecution();
         u_int8_t instruction;
         switch(instruction = readByte()){
-            case OP_RETURN: {
+            case OP_PRINT: {
                 printValue(pop());
+                printf("\n");
+                break;
+            }
+            case OP_RETURN: {
+                // printValue(pop());
                 printf("\n");
                 return INTERPRET_OK;
             }
             case OP_CONSTANT: {
                 Value constant = readConstant();
                 push(constant);
-                printValue(constant);
+                // printValue(constant);
                 printf("\n");
                 break;
             }
@@ -174,6 +187,34 @@ static InterpretResult run() {
             case OP_FALSE:
                 push(boolVal(false));
                 break;
+            case OP_POP:
+                pop();
+                break;
+            case OP_GET_GLOBAL: {
+                ObjString* name = readString();
+                Value value;
+                if (!tableGet(&vm.globals, name, &value)) {
+                    runtimeError("Undefined variable '%s'.", name->chars);
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                push(value);
+                break;
+            }
+            case OP_DEFINE_GLOBAL: {
+                ObjString* name = readString();
+                tableSet(&vm.globals, name, peek(0));
+                pop();
+                break;
+            }
+            case OP_SET_GLOBAL: {
+                ObjString* name = readString();;
+                if (tableSet(&vm.globals, name, peek(0))){
+                    tableDelete(&vm.globals, name);
+                    runtimeError("Undefined variable '%s'.", name->chars);
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                break;
+            }
             case OP_EQUAL: {
                 Value b = pop();
                 Value a = pop();
