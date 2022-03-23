@@ -1,0 +1,6 @@
+var rhino = 53;
+if (rhino > 35){
+    print("Rhino is quite old");
+} else{
+    print("Rhino is quite young");
+}
