@@ -176,6 +176,11 @@ static InterpretResult run() {
                 printf("\n");
                 break;
             }
+            case OP_LOOP: {
+                uint16_t offset = readShort();
+                vm.ip -= offset;
+                break;
+            }
             case OP_RETURN: {
                 // printValue(pop());
                 printf("\n");
@@ -185,7 +190,7 @@ static InterpretResult run() {
                 Value constant = readConstant();
                 push(constant);
                 // printValue(constant);
-                printf("\n");
+                // printf("\n");
                 break;
             }
             case OP_NIL:
@@ -202,7 +207,7 @@ static InterpretResult run() {
                 break;
             case OP_GET_LOCAL: {
                 uint8_t slot = readByte();
-                std::cout << "Reading slot: " << +slot << std::endl;
+                // std::cout << "Reading slot: " << +slot << std::endl;
                 push(vm.stack[slot]);
                 break;
             }

@@ -4,3 +4,21 @@ if (rhino > 35){
 } else{
     print("Rhino is quite young");
 }
+var dinosaur = 63;
+if (rhino < dinosaur and dinosaur > 50){
+    print("Both rhino dinosaur conditions satisfied");
+} else{
+    print("Not both rhino dinosaur conditions");
+}
+var elephant = 30;
+if (elephant >= dinosaur or dinosaur < 50){
+    print("One of two dinosaur elephant conditions satisfied");
+} else{
+    print("Neither dinosaur elephant conditions satisfied");
+}
+
+while (elephant < 45){
+    print("Elephant is still underage");
+    print(elephant);
+    elephant = elephant + 2;
+}
