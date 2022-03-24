@@ -1,0 +1,17 @@
+for (var counter = 0; counter < 50; counter = counter + 1){
+    print(counter);
+    print("Incrementing counter");
+
+    if (counter > 35){
+        print("Counter is more than 35");
+    } else{
+        print("Counter is less than or equal to 35");
+    }
+
+    var hi = 0;
+    while (hi < 2){
+        print("Printing hi: ");
+        print(hi);
+        hi = hi + 1;
+    }
+}

@@ -78,6 +78,16 @@ Value readConstant(){
     return vm.chunk->constants.values[byteNum];
 }
 
+u_int16_t readShort(){
+    vm.ip += 2;
+    uint8_t instructPointer = *vm.ip;
+    uint16_t firstValue = vm.ip[-2];
+    uint16_t firstValueShifted = vm.ip[-2] << 8;
+    uint16_t secondValue = vm.ip[-1];
+    uint16_t result = vm.ip[-2] << 8 | vm.ip[-1];
+    return (uint16_t) (result);
+}
+
 ObjString* readString(){
     Value value = readConstant();
     return asString(value);
@@ -166,6 +176,11 @@ static InterpretResult run() {
                 printf("\n");
                 break;
             }
+            case OP_LOOP: {
+                uint16_t offset = readShort();
+                vm.ip -= offset;
+                break;
+            }
             case OP_RETURN: {
                 // printValue(pop());
                 printf("\n");
@@ -175,7 +190,7 @@ static InterpretResult run() {
                 Value constant = readConstant();
                 push(constant);
                 // printValue(constant);
-                printf("\n");
+                // printf("\n");
                 break;
             }
             case OP_NIL:
@@ -192,7 +207,7 @@ static InterpretResult run() {
                 break;
             case OP_GET_LOCAL: {
                 uint8_t slot = readByte();
-                std::cout << "Reading slot: " << +slot << std::endl;
+                // std::cout << "Reading slot: " << +slot << std::endl;
                 push(vm.stack[slot]);
                 break;
             }
@@ -275,6 +290,18 @@ static InterpretResult run() {
             }
             case OP_NOT: {
                 push(boolVal(isFalsey(pop())));
+                break;
+            }
+            case OP_JUMP: {
+                uint16_t offset = readShort();
+                vm.ip += offset;
+                break;
+            }
+            case OP_JUMP_IF_FALSE: {
+                uint16_t offset = readShort();
+                if (isFalsey(peek(0))){
+                    vm.ip += offset;
+                }
                 break;
             }
             case OP_NEGATE: {
