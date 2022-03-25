@@ -34,7 +34,7 @@ def read_constant(vmdata:sp.VMData, current: int):
         return (current_value.bool_val, instruction_counter)
 
 def read_string(vmdata:sp.VMData, current: int):
-    return str(read_constant(vmdata, current))
+    return read_constant(vmdata, current)
 
 def read_short(value, vmdata:sp.VMData):
     value = value + 2
@@ -92,6 +92,7 @@ def run(vmdata: sp.VMData):
     instruction_counter = 0
     data_stack = []
     vmdata.string_map = build_string_map(vmdata.strings_at_addresses)
+    vmdata.global_data = {}
     while True:
         instruction_value, instruction_counter = read_byte(vmdata, instruction_counter)
         # breakpoint()
@@ -112,6 +113,24 @@ def run(vmdata: sp.VMData):
             push(data_stack, True)
         elif instruction_value == sp.VMDataOpcode.OP_FALSE:
             push(data_stack, False)   
+        elif instruction_value == sp.VMDataOpcode.OP_GET_GLOBAL:
+            name, instruction_counter = read_string(vmdata, instruction_counter)
+            if (name not in vmdata.global_data):
+                runtimeError(f'Undefined variable \'{name}\'.')
+                return False
+            push(data_stack, vmdata.global_data[name])
+        elif instruction_value == sp.VMDataOpcode.OP_DEFINE_GLOBAL:
+            name, instruction_counter = read_string(vmdata, instruction_counter)
+            vmdata.global_data[name] = peek(data_stack, 0)
+            pop(data_stack)
+        elif instruction_value == sp.VMDataOpcode.OP_SET_GLOBAL:
+            name, instruction_counter = read_string(vmdata, instruction_counter)
+            if (name not in vmdata.global_data):
+                runtimeError(f'Undefined variable \'{name}\'.')
+                return False
+            else:
+                value = peek(data_stack, 0)
+                vmdata.global_data[name] = value
         elif instruction_value == sp.VMDataOpcode.OP_GET_LOCAL:  
             slot, _ = read_byte(vmdata, instruction_counter)
             push(data_stack, slot)
@@ -152,8 +171,8 @@ def run(vmdata: sp.VMData):
             # breakpoint()
             if type(peek(data_stack, 0)) == str and type(peek(data_stack, 1)) == str:
                 # breakpoint()
-                val_1 = pop(data_stack)
                 val_2 = pop(data_stack)
+                val_1 = pop(data_stack)
                 push(data_stack, concatenate(val_1, val_2))
             elif type(peek(data_stack, 0)) == float and type(peek(data_stack, 1)) == float:
                 push(data_stack, pop(data_stack) + pop(data_stack))
