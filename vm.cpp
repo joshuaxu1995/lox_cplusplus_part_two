@@ -4,6 +4,9 @@
 #include "compiler.h"
 #include "common.h"
 #include "debug.h"
+#include "vmdata.pb.h"
+#include "serialize.h"
+#include <fstream>
 
 VM vm;
 
@@ -316,7 +319,6 @@ static InterpretResult run() {
     }
 }
 
-
 InterpretResult interpret(const char* source) {
     Chunk chunk;
     initChunk(&chunk);
@@ -329,9 +331,26 @@ InterpretResult interpret(const char* source) {
     vm.chunk = &chunk;
     vm.ip = vm.chunk->code;
 
+    serializationPackage::VMData vmData = serializeVMData(vm);
+    std::fstream output("VMDataFile.txt", std::ios::out | std::ios::trunc | std::ios::binary);
+    if (!vmData.SerializeToOstream(&output)) {
+      std::cerr << "Failed to write vmdata to file." << std::endl;
+      return INTERPRET_COMPILE_ERROR;
+    }
+
     InterpretResult result = run();
 
+    // if (__cplusplus == 201703L) std::cout << "C++17\n";
+    // else if (__cplusplus == 201402L) std::cout << "C++14\n";
+    // else if (__cplusplus == 201103L) std::cout << "C++11\n";
+    // else if (__cplusplus == 199711L) std::cout << "C++98\n";
+    // else std::cout << "pre-standard C++\n";
+    
+
     freeChunk(&chunk);
-    return result;
+
+
+    // return result;
+    return INTERPRET_OK;
 }
 

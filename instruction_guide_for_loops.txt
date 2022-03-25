@@ -1,0 +1,57 @@
+== code ==
+0000    1     0 OP_CONSTANT         1 'yoyoyo
+0002    |     8 OP_DEFINE_GLOBAL    0 'firstVariable
+0004    2     0 OP_CONSTANT         2 '33
+0006    |     5 OP_GET_LOCAL        0
+0008    |     0 OP_CONSTANT         3 '37
+0010    |    12 OP_LESS
+0011    |    21 OP_JUMP_IF_FALSE   11 -> 90
+0014    |     4 OP_POP
+0015    |   255 Unknown opcode �
+0016    |   255 Unknown opcode �
+0017    |    20 OP_JUMP            17 -> 32
+0020    |     5 OP_GET_LOCAL        0
+0022    |     0 OP_CONSTANT         4 '1
+0024    |    13 OP_ADD
+0025    |     6 OP_SET_LOCAL        0
+0027    |     4 OP_POP
+0028    |    22 OP_LOOP            28 -> 55
+0031    3     5 OP_GET_LOCAL        0
+0033    |    19 OP_PRINT
+0034    4     0 OP_CONSTANT         5 'Incrementing counter
+0036    |    19 OP_PRINT
+0037    6     5 OP_GET_LOCAL        0
+0039    |     0 OP_CONSTANT         6 '35
+0041    |    11 OP_GREATER
+0042    |    21 OP_JUMP_IF_FALSE   42 -> 53
+0045    |     4 OP_POP
+0046    7     0 OP_CONSTANT         7 'Counter is more than 35
+0048    |    19 OP_PRINT
+0049    8    20 OP_JUMP            49 -> 57
+0052    |     4 OP_POP
+0053    9     0 OP_CONSTANT         8 'Counter is less than or equal to 35
+0055    |    19 OP_PRINT
+0056   12     0 OP_CONSTANT         9 '0
+0058   13     5 OP_GET_LOCAL        1
+0060    |     0 OP_CONSTANT        10 '2
+0062    |    12 OP_LESS
+0063    |    21 OP_JUMP_IF_FALSE   63 -> 85
+0066    |     4 OP_POP
+0067   14     0 OP_CONSTANT        11 'Printing hi: 
+0069    |    19 OP_PRINT
+0070   15     5 OP_GET_LOCAL        1
+0072    |    19 OP_PRINT
+0073   16     5 OP_GET_LOCAL        1
+0075    |     0 OP_CONSTANT        12 '1
+0077    |    13 OP_ADD
+0078    |     6 OP_SET_LOCAL        1
+0080    |     4 OP_POP
+0081   17    22 OP_LOOP            81 -> 109
+0084    |     4 OP_POP
+0085   18     4 OP_POP
+0086    |    22 OP_LOOP            86 -> 157
+0089    |     4 OP_POP
+0090    |     4 OP_POP
+0091   19     0 OP_CONSTANT        14 'yohihi
+0093    |     8 OP_DEFINE_GLOBAL   13 'secondVariable
+0095    |    23 OP_RETURN
