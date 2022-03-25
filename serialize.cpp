@@ -20,7 +20,6 @@ void serializeConstants(serializationPackage::VMData* vmData, Chunk* chunk){
     for (int i = 0; i < chunk->constants.count; i++){
         Value* valuePointer = chunk->constants.values + i;
         Value myValue = *valuePointer;
-        uintptr_t currAddress = (uintptr_t) valuePointer;
         serializationPackage::ValueType valueType;
         if (isBool(myValue)){
             // valueType.set

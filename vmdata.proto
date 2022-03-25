@@ -44,7 +44,7 @@ message VMData {
 
 message ValueType {
   oneof ValueTypes{
-    int32 objectAddress = 1;
+    int64 objectAddress = 1;
     double numVal = 2;
     bool boolVal = 4;
   }
