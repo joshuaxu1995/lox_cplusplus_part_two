@@ -88,7 +88,7 @@ def run(vmdata: sp.VMData):
         instruction_value, instruction_counter = read_byte(vmdata, instruction_counter)
         # breakpoint()
         # print("Printing instruction counter: " + str(instruction_counter))
-        # print("Executing instruction value: " + str(sp.VMDataOpcode(instruction_value)))
+        print("Executing instruction value: " + str(sp.VMDataOpcode(instruction_value)))
         if instruction_value == sp.VMDataOpcode.OP_CONSTANT:
             constant, instruction_counter = read_constant(vmdata, instruction_counter)
             data_stack.append(constant)

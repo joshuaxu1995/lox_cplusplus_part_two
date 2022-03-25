@@ -32,6 +32,7 @@ class VMDataOpcode(betterproto.Enum):
     OP_JUMP_IF_FALSE = 21
     OP_LOOP = 22
     OP_RETURN = 23
+    OP_PLACEHOLDER = 255
 
 
 @dataclass
