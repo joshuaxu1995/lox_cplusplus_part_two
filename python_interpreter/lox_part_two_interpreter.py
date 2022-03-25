@@ -6,15 +6,6 @@ import operator
 import betterproto
 from lib import serializationPackage as sp
 
-def push(currentStack: typing.List[int], value):
-    currentStack.append(value)
-
-def pop(currentStack: typing.List[int]):
-    return currentStack.pop()
-
-def peek(currentStack: typing.List[int], distance: int):
-    return currentStack[-distance]
-
 def is_falsey(value):
     return value is None or value == False
 
@@ -36,12 +27,12 @@ def read_constant(vmdata:sp.VMData, current: int):
 def read_string(vmdata:sp.VMData, current: int):
     return read_constant(vmdata, current)
 
-def read_short(value, vmdata:sp.VMData):
-    value = value + 2
+def read_short(vmdata:sp.VMData, current: int):
+    new_instruction_counter = current + 2
     # instruction_value = vmdata.instructions[value]
-    first_value = vmdata.instructions[value - 2] << 8
-    second_value = first_value | vmdata.instructions[value - 1]
-    return second_value
+    first_value = vmdata.instructions[new_instruction_counter - 2] << 8
+    second_value = first_value | vmdata.instructions[new_instruction_counter - 1]
+    return second_value, new_instruction_counter
 
 def runtimeError(instruction_number):
     print(f'[line {instruction_number}] in script\n')
@@ -64,15 +55,15 @@ def run_file(path: str):
 
 def binaryOp(current_stack, passed_func, the_type):
     while True:
-        if not type(peek(current_stack, 0)) == float or not type(peek(current_stack, 1)) == float:
+        if not type(current_stack[-1]) == float or not type(current_stack[-2]) == float:
             runtimeError("Operands must be numbers.")
             return False
-        arg_b = pop(current_stack)
-        arg_a = pop(current_stack)
+        arg_b = current_stack.pop()
+        arg_a = current_stack.pop()
         if (the_type == bool):
-            push(current_stack, passed_func(arg_a, arg_b))
+            current_stack.append(passed_func(arg_a, arg_b))
         elif (the_type == float):
-            push(current_stack, passed_func(arg_a, arg_b))
+            current_stack.append(current_stack, passed_func(arg_a, arg_b))
         break
     return True
 
@@ -97,46 +88,44 @@ def run(vmdata: sp.VMData):
         instruction_value, instruction_counter = read_byte(vmdata, instruction_counter)
         # breakpoint()
         # print("Printing instruction counter: " + str(instruction_counter))
+        # print("Executing instruction value: " + str(sp.VMDataOpcode(instruction_value)))
         if instruction_value == sp.VMDataOpcode.OP_CONSTANT:
             constant, instruction_counter = read_constant(vmdata, instruction_counter)
-            push(data_stack, constant)
+            data_stack.append(constant)
         elif instruction_value == sp.VMDataOpcode.OP_PRINT:
-            print(pop(data_stack))
+            print(data_stack.pop())
         elif instruction_value == sp.VMDataOpcode.OP_RETURN:
             break
-        elif instruction_value == sp.VMDataOpcode.OP_LOOP:
-            offset = read_short()
-            instruction_counter -= offset
         elif instruction_value == sp.VMDataOpcode.OP_NIL:
-            push(data_stack, None)
+            data_stack.append(None)
         elif instruction_value == sp.VMDataOpcode.OP_TRUE:
-            push(data_stack, True)
+            data_stack.append(True)
         elif instruction_value == sp.VMDataOpcode.OP_FALSE:
-            push(data_stack, False)   
+            data_stack.append(False)   
         elif instruction_value == sp.VMDataOpcode.OP_GET_GLOBAL:
             name, instruction_counter = read_string(vmdata, instruction_counter)
             if (name not in vmdata.global_data):
                 runtimeError(f'Undefined variable \'{name}\'.')
                 return False
-            push(data_stack, vmdata.global_data[name])
+            data_stack.append(vmdata.global_data[name])
         elif instruction_value == sp.VMDataOpcode.OP_DEFINE_GLOBAL:
             name, instruction_counter = read_string(vmdata, instruction_counter)
-            vmdata.global_data[name] = peek(data_stack, 0)
-            pop(data_stack)
+            vmdata.global_data[name] = data_stack[-1]
+            data_stack.pop()
         elif instruction_value == sp.VMDataOpcode.OP_SET_GLOBAL:
             name, instruction_counter = read_string(vmdata, instruction_counter)
             if (name not in vmdata.global_data):
                 runtimeError(f'Undefined variable \'{name}\'.')
                 return False
             else:
-                value = peek(data_stack, 0)
+                value = data_stack[-1]
                 vmdata.global_data[name] = value
         elif instruction_value == sp.VMDataOpcode.OP_GET_LOCAL:  
-            slot, _ = read_byte(vmdata, instruction_counter)
-            push(data_stack, slot)
+            slot, instruction_counter = read_byte(vmdata, instruction_counter)
+            data_stack.append(data_stack[slot])
         elif instruction_value == sp.VMDataOpcode.OP_SET_LOCAL: 
-            slot, _ = read_byte(vmdata, instruction_counter)
-            data_stack[slot] = peek(data_stack, 0)
+            slot, instruction_counter = read_byte(vmdata, instruction_counter)
+            data_stack[slot] = data_stack[-1]
         elif instruction_value == sp.VMDataOpcode.OP_SUBTRACT:
             if (binaryOp(data_stack, operator.sub, float) == False):
                 return False
@@ -147,39 +136,48 @@ def run(vmdata: sp.VMData):
             if (binaryOp(data_stack, operator.truediv, float) == False):
                 return False
         elif instruction_value == sp.VMDataOpcode.OP_NOT:
-            push(data_stack, is_falsey(pop(data_stack)))
+            data_stack.append(is_falsey(data_stack.pop()))
         elif instruction_value == sp.VMDataOpcode.OP_NEGATE:
-            if not peek(0).isNumber():
+            if type(data_stack[-1]) != float:
                 runtimeError("Operand must be a number.")
                 return False
-            push(-(pop(data_stack)))
+            data_stack.append(-(data_stack.pop()))
         elif instruction_value == sp.VMDataOpcode.OP_POP:
-            pop(data_stack)
+            data_stack.pop()
         elif instruction_value == sp.VMDataOpcode.OP_EQUAL:
-            b = pop(data_stack)
-            a = pop(data_stack)
-            push(data_stack, a == b)
+            b = data_stack.pop()
+            a = data_stack.pop()
+            data_stack.append(a == b)
         elif instruction_value == sp.VMDataOpcode.OP_GREATER:
-            if binaryOp(data_stack, operator.ge, bool) == False:
+            if binaryOp(data_stack, operator.gt, bool) == False:
                 return False
 
         elif instruction_value == sp.VMDataOpcode.OP_LESS:
-            if binaryOp(data_stack, operator.le, bool) == False:
+            if binaryOp(data_stack, operator.lt, bool) == False:
                 return False
 
         elif instruction_value == sp.VMDataOpcode.OP_ADD:
             # breakpoint()
-            if type(peek(data_stack, 0)) == str and type(peek(data_stack, 1)) == str:
+            if type(data_stack[-1]) == str and type(data_stack[-2]) == str:
                 # breakpoint()
-                val_2 = pop(data_stack)
-                val_1 = pop(data_stack)
-                push(data_stack, concatenate(val_1, val_2))
-            elif type(peek(data_stack, 0)) == float and type(peek(data_stack, 1)) == float:
-                push(data_stack, pop(data_stack) + pop(data_stack))
+                val_2 = data_stack.pop()
+                val_1 = data_stack.pop()
+                data_stack.append(concatenate(val_1, val_2))
+            elif type(data_stack[-1]) == float and type(data_stack[-2]) == float:
+                data_stack.append(data_stack.pop() + data_stack.pop())
             else:
                 runtimeError("Operands must be two numbers or two strings.")
                 return False    
-    
+        elif instruction_value == sp.VMDataOpcode.OP_LOOP:
+            offset, instruction_counter = read_short(vmdata, instruction_counter)
+            instruction_counter -= offset
+        elif instruction_value == sp.VMDataOpcode.OP_JUMP:
+            offset, instruction_counter = read_short(vmdata, instruction_counter)
+            instruction_counter += offset
+        elif instruction_value == sp.VMDataOpcode.OP_JUMP_IF_FALSE:
+            offset, instruction_counter = read_short(vmdata, instruction_counter)
+            if is_falsey(data_stack[-1]):
+                instruction_counter += offset
 
 def main():
     if len(sys.argv) > 2 or len(sys.argv) < 2:

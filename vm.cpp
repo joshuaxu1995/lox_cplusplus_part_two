@@ -338,7 +338,7 @@ InterpretResult interpret(const char* source) {
       return INTERPRET_COMPILE_ERROR;
     }
 
-    // InterpretResult result = run();
+    InterpretResult result = run();
 
     // if (__cplusplus == 201703L) std::cout << "C++17\n";
     // else if (__cplusplus == 201402L) std::cout << "C++14\n";

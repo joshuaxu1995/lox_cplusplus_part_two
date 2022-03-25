@@ -1,5 +1,5 @@
 var firstVariable = "yoyoyo";
-for (var counter = 0; counter < 50; counter = counter + 1){
+for (var counter = 33; counter < 37; counter = counter + 1){
     print(counter);
     print("Incrementing counter");
 

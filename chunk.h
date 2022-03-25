@@ -40,6 +40,12 @@ typedef struct
     ValueArray constants;
 } Chunk;
 
+typedef struct
+{
+    uint8_t *code;
+    bool isInstruction;
+} ByteCodeVal;
+
 void initChunk(Chunk *chunk);
 void freeChunk(Chunk *chunk);
 void writeChunk(Chunk *chunk, uint8_t byte, int line);
