@@ -53,8 +53,8 @@ class VMDataAddressAndHash(betterproto.Message):
 @dataclass
 class Context(betterproto.Message):
     context_name: str = betterproto.string_field(1)
-    instruction_vals: Dict[int, int] = betterproto.map_field(
-        2, betterproto.TYPE_INT64, betterproto.TYPE_INT64
+    instruction_vals: Dict[int, "InstructionType"] = betterproto.map_field(
+        2, betterproto.TYPE_INT64, betterproto.TYPE_MESSAGE
     )
     function_address: int = betterproto.int64_field(3)
     first_instruction_address: int = betterproto.int64_field(4)
@@ -62,6 +62,12 @@ class Context(betterproto.Message):
         5, betterproto.TYPE_INT64, betterproto.TYPE_MESSAGE
     )
     arity: int = betterproto.int32_field(6)
+
+
+@dataclass
+class InstructionType(betterproto.Message):
+    opcode: "ContextOpcode" = betterproto.enum_field(1, group="InstructionTypes")
+    address_or_constant: int = betterproto.int64_field(2, group="InstructionTypes")
 
 
 @dataclass

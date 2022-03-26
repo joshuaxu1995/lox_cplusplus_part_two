@@ -60,6 +60,8 @@ typedef struct Compiler {
 Parser parser;
 Compiler* current = NULL;
 std::vector<ObjFunction*> locationOfFunctions;
+std::unordered_map<std::string, std::set<uint64_t>> locationsOfNonInstructions;
+
 // Chunk* compilingChunk;
 
 static Chunk* currentChunk() {
@@ -134,6 +136,24 @@ static void emitBytes(uint8_t byte1, uint8_t byte2) {
     emitByte(byte2);
 }
 
+static void insertInstructionsIntoMapSet(int count){
+    std::string name;
+    if (current->function->name == NULL){
+        name = "";
+    } else{
+        name = current->function->name->chars;
+    }
+    int index = current->function->chunk.count - 1;
+    // std::cout<< "Printing index: " << index << " and name: " << name << " and address: " <<
+        (uint64_t) &current->function->chunk.code[index];
+    if (count == 1){
+        locationsOfNonInstructions[name].insert((uint64_t) &current->function->chunk.code[index]);
+    } else if (count == 2){
+        locationsOfNonInstructions[name].insert((uint64_t) &current->function->chunk.code[index - 1]);
+        locationsOfNonInstructions[name].insert((uint64_t) &current->function->chunk.code[index]);
+    }
+}
+
 static void emitLoop(int loopStart) {
     emitByte(OP_LOOP);
 
@@ -144,16 +164,20 @@ static void emitLoop(int loopStart) {
 
     emitByte((offset >> 8) & 0xff);
     emitByte(offset & 0xff);
+    insertInstructionsIntoMapSet(2);
 }
 
 static int emitJump(uint8_t instruction) {
     emitByte(instruction);
     emitByte(0xff);
     emitByte(0xff);
+    insertInstructionsIntoMapSet(2);
     return currentChunk()->count - 2;
 }
 
 static void emitReturn() {
+    emitByte(OP_NIL);
+    insertInstructionsIntoMapSet(1);
     emitByte(OP_RETURN);
 }
 
@@ -169,6 +193,7 @@ static uint8_t makeConstant(Value value) {
 
 static void emitConstant(Value value){
     emitBytes(OP_CONSTANT, makeConstant(value));
+    insertInstructionsIntoMapSet(1);
 }
 
 static void patchJump(int offset) {
@@ -280,6 +305,7 @@ static uint8_t argumentList() {
 static void call(bool canAssign) {
     uint8_t argCount = argumentList();
     emitBytes(OP_CALL, argCount);
+    insertInstructionsIntoMapSet(1);
 }
 
 static void literal(bool canAssign) {
@@ -355,8 +381,10 @@ static void namedVariable(Token name, bool canAssign){
     if (canAssign && match(TOKEN_EQUAL)){
         expression();
         emitBytes(setOp, (uint8_t) arg);
+        insertInstructionsIntoMapSet(1);
     } else{
         emitBytes(getOp, (uint8_t) arg);
+        insertInstructionsIntoMapSet(1);
     }
 }
 
@@ -460,6 +488,7 @@ static void defineVariable(uint8_t global) {
     }
 
     emitBytes(OP_DEFINE_GLOBAL, global);
+    insertInstructionsIntoMapSet(1);
 }
 
 static void and_(bool canAssign) {
@@ -590,6 +619,19 @@ static void ifStatement() {
     }
 
     patchJump(elseJump);
+}
+
+static void returnStatement() {
+    if (current->type == TYPE_SCRIPT) {
+        error("Cant retrun from top-level code.");
+    }
+    if (match(TOKEN_SEMICOLON)) {
+        emitReturn();
+    } else{
+        expression();
+        consume(TOKEN_SEMICOLON, "Expect ';' after return value.");
+        emitByte(OP_RETURN);
+    }
 }
 
 static void synchronize() {
@@ -724,6 +766,8 @@ static void statement() {
         endScope();    
     } else if (match(TOKEN_FOR)){
         forStatement(); 
+    } else if (match(TOKEN_RETURN)){
+        returnStatement();    
     }else{
         expressionStatement();
     }

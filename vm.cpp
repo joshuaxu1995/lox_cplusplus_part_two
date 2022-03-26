@@ -378,7 +378,7 @@ InterpretResult interpret(const char* source) {
     push(objVal((Obj*) function));
     call(function, 0);
 
-    serializationPackage::VMData vmData = serializeVMData(vm, locationOfFunctions);
+    serializationPackage::VMData vmData = serializeVMData(vm, locationOfFunctions, locationsOfNonInstructions);
     std::fstream output("VMDataFile.txt", std::ios::out | std::ios::trunc | std::ios::binary);
     if (!vmData.SerializeToOstream(&output)) {
       std::cerr << "Failed to write vmdata to file." << std::endl;

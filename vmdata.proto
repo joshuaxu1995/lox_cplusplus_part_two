@@ -15,7 +15,7 @@ message VMData {
 message Context {
 
   string contextName = 1;
-  map<int64, int64> instructionVals = 2;
+  map<int64, InstructionType> instructionVals = 2;
   int64 functionAddress = 3;
   int64 firstInstructionAddress = 4;
   map<int64, ValueType> constantVals = 5;
@@ -50,6 +50,13 @@ message Context {
       OP_RETURN = 24;
       OP_PLACEHOLDER = 255;
   } 
+}
+
+message InstructionType{
+  oneof InstructionTypes{
+    Context.Opcode opcode = 1;
+    int64 addressOrConstant = 2;
+  }
 }
 
 message ValueType {

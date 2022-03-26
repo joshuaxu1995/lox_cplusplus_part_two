@@ -39,23 +39,47 @@ void serializeConstantVals(serializationPackage::Context* context, ObjFunction* 
     }
 }
 
-void serializeContexts(serializationPackage::VMData* vmData, std::vector<ObjFunction*> locationOfFunctions){
+void serializeContexts(serializationPackage::VMData* vmData, std::vector<ObjFunction*> locationOfFunctions,
+    std::unordered_map<std::string, std::set<uint64_t>> locationsOfNonInstructions){
     for (auto& element: locationOfFunctions){
         serializationPackage::Context* context = vmData->add_contexts();
         context->set_functionaddress((uint64_t) element);
+        std::string context_name_temp;
         if (element->name != NULL){
-            context->set_contextname(element->name->chars);
-            std::cout<< "Element here is: " << element << " and name: " << element->name->chars << " and arity: " << element->arity << std::endl;
+            context_name_temp = element->name->chars;
+            // std::cout<< "Element here is: " << element << " and name: " << element->name->chars << " and arity: " << element->arity << std::endl;
         } else{
-            context->set_contextname("");
-            std::cout<< "Element here is: " << element << " and name: is script: " << " and arity: " << element->arity << std::endl;
+            context_name_temp = "";
+            // std::cout<< "Element here is: " << element << " and name: is script: " << " and arity: " << element->arity << std::endl;
         }
+        context->set_contextname(context_name_temp);
         context->set_arity(element->arity);
         auto& contextInstructionMap = *(context->mutable_instructionvals());
+        for (auto& [key, value]: locationsOfNonInstructions){
+            // std::cout << "Printing key: " << key;
+            // for (auto& address: value){
+            //     std::cout << address << " ";
+            // }
+            std::cout << "\n";
+        }
         for (int i = 0; i < element->chunk.count; i++){
+
             uint64_t address = (uint64_t) element->chunk.code + i;
-            uint64_t opcodevalue_or_address = (*(element->chunk.code + i));
-            contextInstructionMap[address] = opcodevalue_or_address;
+            serializationPackage::InstructionType instructionType;
+
+            if (locationsOfNonInstructions[context_name_temp].find(address) != 
+                locationsOfNonInstructions[context_name_temp].end()){
+                uint64_t addressValue = (uint64_t) (*(element->chunk.code + i));
+                instructionType.set_addressorconstant(addressValue);
+                // std::cout << "Found element: " << context_name_temp << " and " << addressValue << std::endl;
+            } else{
+                serializationPackage::Context_Opcode temp_opcode = static_cast<serializationPackage::Context_Opcode> 
+                    ((int) (*(element->chunk.code + i)));
+                instructionType.set_opcode(temp_opcode);
+                // std::cout << "Did not find element: " << context_name_temp << " and " << temp_opcode << std::endl;
+            }
+            contextInstructionMap[address] = instructionType;
+
             if (i == 0){
                 context->set_firstinstructionaddress(address);
             }
@@ -113,13 +137,14 @@ void serializeStrings(serializationPackage::VMData* vmData, Table stringTable){
     }
 }
 
-serializationPackage::VMData serializeVMData(VM vm, std::vector<ObjFunction*> locationOfFunctions){
+serializationPackage::VMData serializeVMData(VM vm, std::vector<ObjFunction*> locationOfFunctions, 
+        std::unordered_map<std::string, std::set<uint64_t>> locationsOfNonInstructions){
     serializationPackage::VMData vmdata;
     serializationPackage::ValueType valueType;
-    serializeContexts(&vmdata, locationOfFunctions);
+    serializeContexts(&vmdata, locationOfFunctions, locationsOfNonInstructions);
     // serializeConstants(&vmdata, vm.chunk);
     serializeStrings(&vmdata, vm.strings);
     // serializeInstructions(&vmdata, vm.chunk);
-    std::cout<< vmdata.DebugString();
+    // std::cout<< vmdata.DebugString();
     return vmdata;
 }
