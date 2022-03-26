@@ -1,8 +1,10 @@
 #pragma once
 
+#include "chunk.h"
 #include "value.h"
 
 typedef enum {
+    OBJ_FUNCTION,
     OBJ_STRING
 } ObjType;
 
@@ -11,6 +13,13 @@ struct Obj {
     struct Obj* next;
 };
 
+typedef struct {
+    Obj obj;
+    int arity;
+    Chunk chunk;
+    ObjString* name;
+} ObjFunction;
+
 struct ObjString {
     Obj obj;
     int length;
@@ -18,6 +27,7 @@ struct ObjString {
     uint32_t hash;
 };
 
+ObjFunction* newFunction();
 static Obj* allocateObject(size_t size, ObjType type);
 
 template <typename T>
@@ -31,6 +41,8 @@ static inline bool isObjType(Value value, ObjType type){
     return isObj(value) && asObj(value)->type == type;
 }
 
+bool isFunction(Value value);
+ObjFunction* asFunction(Value value);
 ObjType objType(Value value);
 bool isString(Value value);
 ObjString* asString(Value value);

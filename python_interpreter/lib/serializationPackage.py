@@ -7,7 +7,7 @@ from typing import Dict, List
 import betterproto
 
 
-class VMDataOpcode(betterproto.Enum):
+class ContextOpcode(betterproto.Enum):
     OP_CONSTANT = 0
     OP_NIL = 1
     OP_TRUE = 2
@@ -31,18 +31,16 @@ class VMDataOpcode(betterproto.Enum):
     OP_JUMP = 20
     OP_JUMP_IF_FALSE = 21
     OP_LOOP = 22
-    OP_RETURN = 23
+    OP_CALL = 23
+    OP_RETURN = 24
     OP_PLACEHOLDER = 255
 
 
 @dataclass
 class VMData(betterproto.Message):
-    instructions: List[int] = betterproto.int32_field(1)
-    constant_vals: Dict[int, "ValueType"] = betterproto.map_field(
-        2, betterproto.TYPE_INT64, betterproto.TYPE_MESSAGE
-    )
+    contexts: List["Context"] = betterproto.message_field(1)
     strings_at_addresses: Dict[str, "VMDataAddressAndHash"] = betterproto.map_field(
-        3, betterproto.TYPE_STRING, betterproto.TYPE_MESSAGE
+        2, betterproto.TYPE_STRING, betterproto.TYPE_MESSAGE
     )
 
 
@@ -53,7 +51,22 @@ class VMDataAddressAndHash(betterproto.Message):
 
 
 @dataclass
+class Context(betterproto.Message):
+    context_name: str = betterproto.string_field(1)
+    instruction_vals: Dict[int, int] = betterproto.map_field(
+        2, betterproto.TYPE_INT64, betterproto.TYPE_INT64
+    )
+    function_address: int = betterproto.int64_field(3)
+    first_instruction_address: int = betterproto.int64_field(4)
+    constant_vals: Dict[int, "ValueType"] = betterproto.map_field(
+        5, betterproto.TYPE_INT64, betterproto.TYPE_MESSAGE
+    )
+    arity: int = betterproto.int32_field(6)
+
+
+@dataclass
 class ValueType(betterproto.Message):
-    object_address: int = betterproto.int64_field(1, group="ValueTypes")
-    num_val: float = betterproto.double_field(2, group="ValueTypes")
+    function_address: int = betterproto.int64_field(1, group="ValueTypes")
+    string_address: int = betterproto.int64_field(2, group="ValueTypes")
+    num_val: float = betterproto.double_field(3, group="ValueTypes")
     bool_val: bool = betterproto.bool_field(4, group="ValueTypes")

@@ -3,4 +3,4 @@
 #include "vmdata.pb.h"
 #include "vm.h"
 
-serializationPackage::VMData serializeVMData(VM vmStateInfo);
+serializationPackage::VMData serializeVMData(VM vmStateInfo, std::vector<ObjFunction*> locationOfFunctions);

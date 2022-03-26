@@ -12,6 +12,7 @@ VM vm;
 
 static void resetStack() {
     vm.stackTop = vm.stack;
+    vm.frameCount = 0;
 }
 
 static void runtimeError(const char* format, ...) {
@@ -20,10 +21,18 @@ static void runtimeError(const char* format, ...) {
     vfprintf(stderr, format, args);
     va_end(args);
     fputs("\n", stderr);
-
-    size_t instruction = vm.ip - vm.chunk->code - 1;
-    int line = vm.chunk->lines[instruction];
-    fprintf(stderr, "[line %d] in script\n", line);
+    for (int i = vm.frameCount - 1; i >= 0; i--){
+        CallFrame* frame = &vm.frames[i];
+        ObjFunction* function = frame->function;
+        size_t instruction = frame->ip - function->chunk.code - 1;
+        int line = function->chunk.lines[instruction];
+        fprintf(stderr, "[line %d] in script\n", line);
+        if (function->name == NULL) {
+            fprintf(stderr, "script\n");
+        } else{
+            fprintf(stderr, "%s()\n", function->name->chars);
+        }
+    }
     resetStack();
 }
 
@@ -55,6 +64,38 @@ Value peek(int distance){
     return val;
 }
 
+static bool call(ObjFunction* function, int argCount) {
+    if (argCount != function->arity){
+        runtimeError("Expected %d arguments but got %d.", 
+            function->arity, argCount);
+        return false;
+    }
+
+    if (vm.frameCount == FRAMES_MAX){
+        runtimeError("Stack overflow.");
+        return false;
+    }
+
+    CallFrame* frame = &vm.frames[vm.frameCount++];
+    frame->function = function;
+    frame->ip = function->chunk.code;
+    frame->slots = vm.stackTop - argCount - 1;
+    return true;
+}
+
+static bool callValue(Value callee, int argCount) {
+    if (isObj(callee)){
+        switch (objType(callee)){
+            case OBJ_FUNCTION:
+                return call(asFunction(callee), argCount);
+            default:
+                break;
+        }
+    }
+    runtimeError("Can only call functions and classes.");
+    return false;
+}
+
 static bool isFalsey(Value value) {
     return isNil(value) || (isBool(value) && !asBool(value));
 }
@@ -73,21 +114,21 @@ static void concatenate() {
 }
 
 u_int8_t readByte(){
-    return *vm.ip++;;
+    return *vm.frames->ip++;
 }
 
 Value readConstant(){
     u_int8_t byteNum = readByte();
-    return vm.chunk->constants.values[byteNum];
+    return vm.frames->function->chunk.constants.values[byteNum];
 }
 
 u_int16_t readShort(){
-    vm.ip += 2;
-    uint8_t instructPointer = *vm.ip;
-    uint16_t firstValue = vm.ip[-2];
-    uint16_t firstValueShifted = vm.ip[-2] << 8;
-    uint16_t secondValue = vm.ip[-1];
-    uint16_t result = vm.ip[-2] << 8 | vm.ip[-1];
+    vm.frames->ip += 2;
+    uint8_t instructPointer = *vm.frames->ip;
+    uint16_t firstValue = vm.frames->ip[-2];
+    uint16_t firstValueShifted = vm.frames->ip[-2] << 8;
+    uint16_t secondValue = vm.frames->ip[-1];
+    uint16_t result = vm.frames->ip[-2] << 8 | vm.frames->ip[-1];
     return (uint16_t) (result);
 }
 
@@ -104,7 +145,8 @@ void debugTraceExecution(){
         printf(" ]");
     }
     printf("\n");
-    disassembleInstruction(vm.chunk, (int) (vm.ip - vm.chunk->code));
+    disassembleInstruction(&vm.frames->function->chunk, (int) (vm.frames->ip - 
+        vm.frames->function->chunk.code));
 }
 
 template<typename T>
@@ -170,6 +212,8 @@ struct LessThan
 };
 
 static InterpretResult run() {
+    CallFrame* frame = &vm.frames[vm.frameCount - 1];
+
     for (;;){
         // debugTraceExecution();
         u_int8_t instruction;
@@ -181,7 +225,15 @@ static InterpretResult run() {
             }
             case OP_LOOP: {
                 uint16_t offset = readShort();
-                vm.ip -= offset;
+                frame->ip -= offset;
+                break;
+            }
+            case OP_CALL: {
+                int argCount = readByte();
+                if (!callValue(peek(argCount), argCount)){
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                frame = &vm.frames[vm.frameCount - 1];
                 break;
             }
             case OP_RETURN: {
@@ -211,12 +263,12 @@ static InterpretResult run() {
             case OP_GET_LOCAL: {
                 uint8_t slot = readByte();
                 // std::cout << "Reading slot: " << +slot << std::endl;
-                push(vm.stack[slot]);
+                push(frame->slots[slot]);
                 break;
             }
             case OP_SET_LOCAL: {
                 uint8_t slot = readByte();
-                vm.stack[slot] = peek(0);
+                frame->slots[slot] = peek(0);
                 break;
             }
             case OP_GET_GLOBAL: {
@@ -297,13 +349,13 @@ static InterpretResult run() {
             }
             case OP_JUMP: {
                 uint16_t offset = readShort();
-                vm.ip += offset;
+                frame->ip += offset;
                 break;
             }
             case OP_JUMP_IF_FALSE: {
                 uint16_t offset = readShort();
                 if (isFalsey(peek(0))){
-                    vm.ip += offset;
+                    frame->ip += offset;
                 }
                 break;
             }
@@ -320,25 +372,20 @@ static InterpretResult run() {
 }
 
 InterpretResult interpret(const char* source) {
-    Chunk chunk;
-    initChunk(&chunk);
+    ObjFunction* function = compile(source);
+    if (function == NULL) return INTERPRET_COMPILE_ERROR;
 
-    if (!compile(source, &chunk)) {
-        freeChunk(&chunk);
-        return INTERPRET_COMPILE_ERROR;
-    }
+    push(objVal((Obj*) function));
+    call(function, 0);
 
-    vm.chunk = &chunk;
-    vm.ip = vm.chunk->code;
-
-    serializationPackage::VMData vmData = serializeVMData(vm);
+    serializationPackage::VMData vmData = serializeVMData(vm, locationOfFunctions);
     std::fstream output("VMDataFile.txt", std::ios::out | std::ios::trunc | std::ios::binary);
     if (!vmData.SerializeToOstream(&output)) {
       std::cerr << "Failed to write vmdata to file." << std::endl;
       return INTERPRET_COMPILE_ERROR;
     }
 
-    InterpretResult result = run();
+    return run();
 
     // if (__cplusplus == 201703L) std::cout << "C++17\n";
     // else if (__cplusplus == 201402L) std::cout << "C++14\n";
@@ -347,10 +394,10 @@ InterpretResult interpret(const char* source) {
     // else std::cout << "pre-standard C++\n";
     
 
-    freeChunk(&chunk);
+    // freeChunk(&chunk);
 
 
     // return result;
-    return INTERPRET_OK;
+    // return INTERPRET_OK;
 }
 

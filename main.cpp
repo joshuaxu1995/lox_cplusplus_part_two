@@ -64,7 +64,7 @@ int main(int argc, const char *argv[])
 {
     initVM();
     if (argc == 1) {
-        runFile("../test_scripts/for_loop_test.txt");
+        runFile("../test_scripts/test_stack_trace.txt");
     }
     else if (argc == 2){
         runFile(argv[1]);
