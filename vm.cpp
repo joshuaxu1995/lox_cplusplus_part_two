@@ -1,5 +1,5 @@
 #include <string.h>
-
+#include <time.h>
 #include "vm.h"
 #include "compiler.h"
 #include "common.h"
@@ -39,6 +39,10 @@ std::string arrayForPrinting[] = {
 
 VM vm;
 
+static Value clockNative(int argCount, Value* args) {
+    return numberVal((double) clock() / CLOCKS_PER_SEC);
+}
+
 static void resetStack() {
     vm.stackTop = vm.stack;
     vm.frameCount = 0;
@@ -65,11 +69,21 @@ static void runtimeError(const char* format, ...) {
     resetStack();
 }
 
+static void defineNative(const char* name, NativeFn function) {
+    push(objVal((Obj*) copyString(name, (int)strlen(name))));
+    push(objVal((Obj*) newNative(function)));
+    tableSet(&vm.globals, asString(vm.stack[0]), vm.stack[1]);
+    pop();
+    pop();
+}
+
 void initVM() {
     resetStack();
     vm.objects = NULL;
     initTable(&vm.globals);
     initTable(&vm.strings);
+
+    defineNative("clock", clockNative);
 }
 
 void freeVM() {
@@ -117,6 +131,13 @@ static bool callValue(Value callee, int argCount) {
         switch (objType(callee)){
             case OBJ_FUNCTION:
                 return call(asFunction(callee), argCount);
+            case OBJ_NATIVE: {
+                NativeFn native = asNative(callee);
+                Value result = native(argCount, vm.stackTop - argCount);
+                vm.stackTop -= argCount + 1;
+                push(result);
+                return true;
+            }
             default:
                 break;
         }

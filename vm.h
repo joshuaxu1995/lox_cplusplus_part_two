@@ -3,8 +3,8 @@
 #include "value.h"
 #include "table.h"
 
-const int FRAMES_MAX = 32;
-const int STACK_MAX = FRAMES_MAX * UINT8_COUNT;
+const int FRAMES_MAX = 64;
+const int STACK_MAX = FRAMES_MAX * 2;
 
 typedef struct {
     ObjFunction* function;
