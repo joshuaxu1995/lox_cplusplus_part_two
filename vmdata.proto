@@ -3,15 +3,23 @@ syntax = "proto3";
 package serializationPackage;
 
 message VMData {
-
-  repeated int32 instructions = 1;
-  map<int64, ValueType> constantVals = 2;
-  map<string, AddressAndHash> stringsAtAddresses = 3;
+  repeated Context contexts = 1;
+  map<string, AddressAndHash> stringsAtAddresses = 2;
 
   message AddressAndHash{
     int64 address = 1;
     int32 hash = 2;
   }
+}
+
+message Context {
+
+  string contextName = 1;
+  map<int64, InstructionType> instructionVals = 2;
+  int64 functionAddress = 3;
+  int64 firstInstructionAddress = 4;
+  map<int64, ValueType> constantVals = 5;
+  int32 arity = 6;
 
   enum Opcode
   {
@@ -38,15 +46,24 @@ message VMData {
       OP_JUMP = 20;
       OP_JUMP_IF_FALSE = 21;
       OP_LOOP = 22;
-      OP_RETURN = 23;
+      OP_CALL = 23;
+      OP_RETURN = 24;
       OP_PLACEHOLDER = 255;
   } 
 }
 
+message InstructionType{
+  oneof InstructionTypes{
+    Context.Opcode opcode = 1;
+    int64 addressOrConstant = 2;
+  }
+}
+
 message ValueType {
   oneof ValueTypes{
-    int64 objectAddress = 1;
-    double numVal = 2;
+    int64 functionAddress = 1;
+    int64 stringAddress = 2;
+    double numVal = 3;
     bool boolVal = 4;
   }
 }

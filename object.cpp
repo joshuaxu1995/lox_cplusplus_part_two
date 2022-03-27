@@ -50,8 +50,19 @@ ObjString* takeString(char* chars, int length) {
     return allocateString(chars, length, hash);
 }
 
+static void printFunction(ObjFunction* function){
+    if (function->name == NULL){
+        printf("<script>");
+        return;
+    }
+    printf("<fun %s>", function->name->chars);
+}
+
 void printObject(Value value) {
     switch (objType(value)) {
+        case OBJ_FUNCTION:
+            printFunction(asFunction(value));
+            break;
         case OBJ_STRING:
             printf("%s", asCstring(value));
             break;
@@ -65,6 +76,14 @@ static Obj* allocateObject(size_t size, ObjType type){
     object->next = vm.objects;
     vm.objects = object;
     return object;
+}
+
+ObjFunction* newFunction() {
+    ObjFunction* function = allocateObj<ObjFunction>(OBJ_FUNCTION);
+    function->arity = 0;
+    function->name = NULL;
+    initChunk(&function->chunk);
+    return function;
 }
 
 ObjType objType(Value value){
@@ -81,4 +100,12 @@ ObjString* asString(Value value){
 
 char* asCstring(Value value){
     return asString(value)->chars;
+}
+
+bool isFunction(Value value){
+    return isObjType(value, OBJ_FUNCTION);
+}
+
+ObjFunction* asFunction(Value value){
+    return (ObjFunction*) asObj(value);
 }
