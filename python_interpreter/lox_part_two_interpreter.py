@@ -166,7 +166,7 @@ def run(vm_runtime_read_only_main, vm_runtime_write_only_main, data_stack):
 
     while True:
         instruction_value, vmRuntimeCallstack[-1].ip = read_byte(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
-        # print("Executing instruction value: " + str(sp.ContextOpcode(instruction_value)))
+        print("Executing instruction value: " + str(sp.ContextOpcode(instruction_value)))
         if instruction_value == sp.ContextOpcode.OP_CONSTANT:
             constant, vmRuntimeCallstack[-1].ip = read_constant(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
             data_stack.append(constant)
