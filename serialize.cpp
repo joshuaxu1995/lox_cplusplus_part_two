@@ -86,7 +86,6 @@ void serializeContexts(serializationPackage::VMData* vmData, std::vector<ObjFunc
             // context.mutable_instructionvals()->;
         }
         serializeConstantVals(context, element);
-        std::cout<< "hi";
         // std::cout<< "Printing: " << vmData->mutable_contexts()->Add(context.);
     }
 }
@@ -128,7 +127,7 @@ void serializeStrings(serializationPackage::VMData* vmData, Table stringTable){
     for (int i = 0; i < stringTable.capacity; i++){
         Entry entry = stringTable.entries[i];
         if (entry.key != NULL){
-            std::cout<<"Printing entry's string " << entry.key->chars << std::endl;
+            // std::cout<<"Printing entry's string " << entry.key->chars << std::endl;
             serializationPackage::VMData_AddressAndHash addressAndHash;
             addressAndHash.set_address(reinterpret_cast<uintptr_t>(entry.key));
             addressAndHash.set_hash(entry.key->hash);

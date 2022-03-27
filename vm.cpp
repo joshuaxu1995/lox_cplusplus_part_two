@@ -8,6 +8,35 @@
 #include "serialize.h"
 #include <fstream>
 
+
+std::string arrayForPrinting[] = {
+    "OP_CONSTANT",
+    "OP_NIL",
+    "OP_TRUE",
+    "OP_FALSE",
+    "OP_POP",
+    "OP_GET_LOCAL",
+    "OP_SET_LOCAL",
+    "OP_GET_GLOBAL",
+    "OP_DEFINE_GLOBAL",
+    "OP_SET_GLOBAL",
+    "OP_EQUAL",
+    "OP_GREATER",
+    "OP_LESS",
+    "OP_ADD",
+    "OP_SUBTRACT",
+    "OP_MULTIPLY",
+    "OP_DIVIDE",
+    "OP_NOT",
+    "OP_NEGATE",
+    "OP_PRINT",
+    "OP_JUMP",
+    "OP_JUMP_IF_FALSE",
+    "OP_LOOP",
+    "OP_CALL",
+    "OP_RETURN"
+};
+
 VM vm;
 
 static void resetStack() {
@@ -114,21 +143,24 @@ static void concatenate() {
 }
 
 u_int8_t readByte(){
-    return *vm.frames->ip++;
+    CallFrame* frame = &vm.frames[vm.frameCount - 1];
+    return *frame->ip++;
 }
 
 Value readConstant(){
     u_int8_t byteNum = readByte();
-    return vm.frames->function->chunk.constants.values[byteNum];
+    CallFrame* frame = &vm.frames[vm.frameCount - 1];
+    return frame->function->chunk.constants.values[byteNum];
 }
 
 u_int16_t readShort(){
-    vm.frames->ip += 2;
-    uint8_t instructPointer = *vm.frames->ip;
-    uint16_t firstValue = vm.frames->ip[-2];
-    uint16_t firstValueShifted = vm.frames->ip[-2] << 8;
-    uint16_t secondValue = vm.frames->ip[-1];
-    uint16_t result = vm.frames->ip[-2] << 8 | vm.frames->ip[-1];
+    CallFrame* frame = &vm.frames[vm.frameCount - 1];
+    frame->ip += 2;
+    uint8_t instructPointer = *frame->ip;
+    uint16_t firstValue = frame->ip[-2];
+    uint16_t firstValueShifted = frame->ip[-2] << 8;
+    uint16_t secondValue = frame->ip[-1];
+    uint16_t result = frame->ip[-2] << 8 | frame->ip[-1];
     return (uint16_t) (result);
 }
 
@@ -138,6 +170,7 @@ ObjString* readString(){
 }
 
 void debugTraceExecution(){
+    CallFrame* frame = &vm.frames[vm.frameCount - 1];
     printf("      ");
     for (Value* slot = vm.stack; slot <vm.stackTop; slot++){
         printf("[ ");
@@ -145,8 +178,8 @@ void debugTraceExecution(){
         printf(" ]");
     }
     printf("\n");
-    disassembleInstruction(&vm.frames->function->chunk, (int) (vm.frames->ip - 
-        vm.frames->function->chunk.code));
+    disassembleInstruction(&frame->function->chunk, (int) (frame->ip - 
+        frame->function->chunk.code));
 }
 
 template<typename T>
@@ -216,8 +249,9 @@ static InterpretResult run() {
 
     for (;;){
         // debugTraceExecution();
-        u_int8_t instruction;
-        switch(instruction = readByte()){
+        u_int8_t instruction = readByte();
+        // std::cout << "Printing instruction string value: " << arrayForPrinting[instruction] << std::endl;
+        switch(instruction){
             case OP_PRINT: {
                 printValue(pop());
                 printf("\n");
@@ -237,9 +271,17 @@ static InterpretResult run() {
                 break;
             }
             case OP_RETURN: {
-                // printValue(pop());
-                printf("\n");
-                return INTERPRET_OK;
+                Value result = pop();
+                vm.frameCount--;
+                if (vm.frameCount == 0) {
+                    pop();
+                    return INTERPRET_OK;
+                }
+
+                vm.stackTop = frame->slots;
+                push(result);
+                frame = &vm.frames[vm.frameCount - 1];
+                break;
             }
             case OP_CONSTANT: {
                 Value constant = readConstant();

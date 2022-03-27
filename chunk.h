@@ -32,6 +32,8 @@ typedef enum
     OP_RETURN
 } OpCode;
 
+// std::string arrayForPrinting[255];
+
 typedef struct
 {
     int count;

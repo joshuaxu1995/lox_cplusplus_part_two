@@ -4,7 +4,7 @@
 #include "table.h"
 
 const int FRAMES_MAX = 32;
-const int STACK_MAX = FRAMES_MAX * 2;
+const int STACK_MAX = FRAMES_MAX * UINT8_COUNT;
 
 typedef struct {
     ObjFunction* function;
