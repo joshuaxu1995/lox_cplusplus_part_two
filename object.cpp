@@ -60,6 +60,9 @@ static void printFunction(ObjFunction* function){
 
 void printObject(Value value) {
     switch (objType(value)) {
+        case OBJ_CLOSURE:
+            printFunction(asClosure(value)->function);
+            break;
         case OBJ_FUNCTION:
             printFunction(asFunction(value));
             break;
@@ -81,9 +84,16 @@ static Obj* allocateObject(size_t size, ObjType type){
     return object;
 }
 
+ObjClosure* newClosure(ObjFunction* function){
+    ObjClosure* closure = allocateObj<ObjClosure>(OBJ_CLOSURE);
+    closure->function = function;
+    return closure;
+}
+
 ObjFunction* newFunction() {
     ObjFunction* function = allocateObj<ObjFunction>(OBJ_FUNCTION);
     function->arity = 0;
+    function->upvalueCount = 0;
     function->name = NULL;
     initChunk(&function->chunk);
     return function;
@@ -97,6 +107,14 @@ ObjNative* newNative(NativeFn function) {
 
 ObjType objType(Value value){
     return asObj(value)->type;
+}
+
+bool isClosure(Value value){
+    return isObjType(value, OBJ_CLOSURE);
+}
+
+ObjClosure* asClosure(Value value){
+    return ((ObjClosure*) asObj(value));
 }
 
 bool isNative(Value value){

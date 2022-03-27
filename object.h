@@ -4,6 +4,7 @@
 #include "value.h"
 
 typedef enum {
+    OBJ_CLOSURE,
     OBJ_FUNCTION,
     OBJ_NATIVE,
     OBJ_STRING
@@ -17,6 +18,7 @@ struct Obj {
 typedef struct {
     Obj obj;
     int arity;
+    int upvalueCount;
     Chunk chunk;
     ObjString* name;
 } ObjFunction;
@@ -35,6 +37,12 @@ struct ObjString {
     uint32_t hash;
 };
 
+typedef struct {
+    Obj obj;
+    ObjFunction* function;
+} ObjClosure;
+
+ObjClosure* newClosure(ObjFunction* function);
 ObjFunction* newFunction();
 ObjNative* newNative(NativeFn function);
 static Obj* allocateObject(size_t size, ObjType type);
@@ -50,6 +58,9 @@ static inline bool isObjType(Value value, ObjType type){
     return isObj(value) && asObj(value)->type == type;
 }
 
+
+bool isClosure(Value value);
+ObjClosure* asClosure(Value value);
 bool isNative(Value value);
 NativeFn asNative(Value value);
 bool isFunction(Value value);
