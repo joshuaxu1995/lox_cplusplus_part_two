@@ -103,13 +103,13 @@ def run_file(path: str):
 
     runtime_string_map = build_string_map(vmdata.strings_at_addresses)
     runtime_instruction_context_map, initial_context_ptr = build_instruction_map_and_initial_context(vmdata.contexts)
-    vmRuntimeReadOnlyMain = VMRuntimeReadOnlyData(runtime_string_map, runtime_instruction_context_map, initial_context_ptr)
+    vm_runtime_read_only_main = VMRuntimeReadOnlyData(runtime_string_map, runtime_instruction_context_map, initial_context_ptr)
     vmRuntimeCallstack = []
-    data_stack = [vmRuntimeReadOnlyMain.contextmap[initial_context_ptr]]
-    call(vmRuntimeReadOnlyMain, vmRuntimeReadOnlyMain.contextmap[initial_context_ptr], 0, vmRuntimeCallstack, data_stack)
-    vmRuntimeWriteOnlyMain = VMRuntimeWriteOnlyData(vmRuntimeCallstack, {})
+    data_stack = [vm_runtime_read_only_main.contextmap[initial_context_ptr]]
+    call(vm_runtime_read_only_main, vm_runtime_read_only_main.contextmap[initial_context_ptr], 0, vmRuntimeCallstack, data_stack)
+    vm_runtime_write_only_main = VMRuntimeWriteOnlyData(vmRuntimeCallstack, {})
 
-    run(vmRuntimeReadOnlyMain, vmRuntimeWriteOnlyMain, data_stack)
+    run(vm_runtime_read_only_main, vm_runtime_write_only_main, data_stack)
 
 def load_vmdata(path: str) -> sp.VMData():
     vmdata = sp.VMData()
@@ -119,10 +119,10 @@ def load_vmdata(path: str) -> sp.VMData():
     return vmdata
 
 
-def binaryOp(vmRuntimeReadOnlyMain, vmRuntimeCallstack, current_stack, passed_func, the_type):
+def binaryOp(vm_runtime_read_only_main, vmRuntimeCallstack, current_stack, passed_func, the_type):
     while True:
         if not type(current_stack[-1]) == float or not type(current_stack[-2]) == float:
-            runtimeError("Operands must be numbers.", vmRuntimeReadOnlyMain, vmRuntimeCallstack)
+            runtimeError("Operands must be numbers.", vm_runtime_read_only_main, vmRuntimeCallstack)
             return False
         arg_b = current_stack.pop()
         arg_a = current_stack.pop()
@@ -161,14 +161,14 @@ def get_first_instruction(vmReadOnlyData: VMRuntimeReadOnlyData, function_ptr: i
     return curr_context.first_instruction_address
 
 
-def run(vmRuntimeReadOnlyMain, vmRuntimeWriteOnlyMain, data_stack):
-    vmRuntimeCallstack = vmRuntimeWriteOnlyMain.callstack
+def run(vm_runtime_read_only_main, vm_runtime_write_only_main, data_stack):
+    vmRuntimeCallstack = vm_runtime_write_only_main.callstack
 
     while True:
-        instruction_value, vmRuntimeCallstack[-1].ip = read_byte(vmRuntimeReadOnlyMain, vmRuntimeCallstack[-1])
+        instruction_value, vmRuntimeCallstack[-1].ip = read_byte(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
         # print("Executing instruction value: " + str(sp.ContextOpcode(instruction_value)))
         if instruction_value == sp.ContextOpcode.OP_CONSTANT:
-            constant, vmRuntimeCallstack[-1].ip = read_constant(vmRuntimeReadOnlyMain, vmRuntimeCallstack[-1])
+            constant, vmRuntimeCallstack[-1].ip = read_constant(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
             data_stack.append(constant)
         elif instruction_value == sp.ContextOpcode.OP_PRINT:
             print(data_stack.pop())
@@ -189,43 +189,43 @@ def run(vmRuntimeReadOnlyMain, vmRuntimeWriteOnlyMain, data_stack):
         elif instruction_value == sp.ContextOpcode.OP_FALSE:
             data_stack.append(False)   
         elif instruction_value == sp.ContextOpcode.OP_GET_GLOBAL:
-            name, vmRuntimeCallstack[-1].ip = read_constant(vmRuntimeReadOnlyMain, vmRuntimeCallstack[-1])
-            if (name not in vmRuntimeWriteOnlyMain.global_data):
-                runtimeError(f'Undefined variable \'{name}\'.', vmRuntimeReadOnlyMain, vmRuntimeCallstack)
+            name, vmRuntimeCallstack[-1].ip = read_constant(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
+            if (name not in vm_runtime_write_only_main.global_data):
+                runtimeError(f'Undefined variable \'{name}\'.', vm_runtime_read_only_main, vmRuntimeCallstack)
                 return False
-            data_stack.append(vmRuntimeWriteOnlyMain.global_data[name])
+            data_stack.append(vm_runtime_write_only_main.global_data[name])
         elif instruction_value == sp.ContextOpcode.OP_DEFINE_GLOBAL:
-            name, vmRuntimeCallstack[-1].ip = read_constant(vmRuntimeReadOnlyMain, vmRuntimeCallstack[-1])
-            vmRuntimeWriteOnlyMain.global_data[name] = data_stack[-1]
+            name, vmRuntimeCallstack[-1].ip = read_constant(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
+            vm_runtime_write_only_main.global_data[name] = data_stack[-1]
             data_stack.pop()
         elif instruction_value == sp.ContextOpcode.OP_SET_GLOBAL:
-            name, vmRuntimeCallstack[-1].ip = read_constant(vmRuntimeReadOnlyMain, vmRuntimeCallstack[-1])
-            if (name not in vmRuntimeWriteOnlyMain.global_data):
-                runtimeError(f'Undefined variable \'{name}\'.', vmRuntimeReadOnlyMain, vmRuntimeCallstack)
+            name, vmRuntimeCallstack[-1].ip = read_constant(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
+            if (name not in vm_runtime_write_only_main.global_data):
+                runtimeError(f'Undefined variable \'{name}\'.', vm_runtime_read_only_main, vmRuntimeCallstack)
                 return False
             else:
                 value = data_stack[-1]
-                vmRuntimeWriteOnlyMain.global_data[name] = value
+                vm_runtime_write_only_main.global_data[name] = value
         elif instruction_value == sp.ContextOpcode.OP_GET_LOCAL: 
-            slot, vmRuntimeCallstack[-1].ip = read_byte(vmRuntimeReadOnlyMain, vmRuntimeCallstack[-1])
+            slot, vmRuntimeCallstack[-1].ip = read_byte(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
             data_stack.append(data_stack[vmRuntimeCallstack[-1].slot_offset + slot])
         elif instruction_value == sp.ContextOpcode.OP_SET_LOCAL: 
-            slot, vmRuntimeCallstack[-1].ip = read_byte(vmRuntimeReadOnlyMain, vmRuntimeCallstack[-1])
+            slot, vmRuntimeCallstack[-1].ip = read_byte(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
             data_stack[vmRuntimeCallstack[-1].slot_offset + slot] = data_stack[-1]
         elif instruction_value == sp.ContextOpcode.OP_SUBTRACT:
-            if (binaryOp(vmRuntimeReadOnlyMain, vmRuntimeCallstack, data_stack, operator.sub, float) == False):
+            if (binaryOp(vm_runtime_read_only_main, vmRuntimeCallstack, data_stack, operator.sub, float) == False):
                 return False
         elif instruction_value == sp.ContextOpcode.OP_MULTIPLY:
-            if (binaryOp(vmRuntimeReadOnlyMain, vmRuntimeCallstack, data_stack, operator.mul, float) == False):
+            if (binaryOp(vm_runtime_read_only_main, vmRuntimeCallstack, data_stack, operator.mul, float) == False):
                 return False
         elif instruction_value == sp.ContextOpcode.OP_DIVIDE:
-            if (binaryOp(vmRuntimeReadOnlyMain, vmRuntimeCallstack, data_stack, operator.truediv, float) == False):
+            if (binaryOp(vm_runtime_read_only_main, vmRuntimeCallstack, data_stack, operator.truediv, float) == False):
                 return False
         elif instruction_value == sp.ContextOpcode.OP_NOT:
             data_stack.append(is_falsey(data_stack.pop()))
         elif instruction_value == sp.ContextOpcode.OP_NEGATE:
             if type(data_stack[-1]) != float:
-                runtimeError("Operand must be a number.", vmRuntimeReadOnlyMain, vmRuntimeCallstack)
+                runtimeError("Operand must be a number.", vm_runtime_read_only_main, vmRuntimeCallstack)
                 return False
             data_stack.append(-(data_stack.pop()))
         elif instruction_value == sp.ContextOpcode.OP_POP:
@@ -235,11 +235,11 @@ def run(vmRuntimeReadOnlyMain, vmRuntimeWriteOnlyMain, data_stack):
             a = data_stack.pop()
             data_stack.append(a == b)
         elif instruction_value == sp.ContextOpcode.OP_GREATER:
-            if binaryOp(vmRuntimeReadOnlyMain, vmRuntimeCallstack, data_stack, operator.gt, bool) == False:
+            if binaryOp(vm_runtime_read_only_main, vmRuntimeCallstack, data_stack, operator.gt, bool) == False:
                 return False
 
         elif instruction_value == sp.ContextOpcode.OP_LESS:
-            if binaryOp(vmRuntimeReadOnlyMain, vmRuntimeCallstack, data_stack, operator.lt, bool) == False:
+            if binaryOp(vm_runtime_read_only_main, vmRuntimeCallstack, data_stack, operator.lt, bool) == False:
                 return False
 
         elif instruction_value == sp.ContextOpcode.OP_ADD:
@@ -252,41 +252,41 @@ def run(vmRuntimeReadOnlyMain, vmRuntimeWriteOnlyMain, data_stack):
             elif type(data_stack[-1]) == float and type(data_stack[-2]) == float:
                 data_stack.append(data_stack.pop() + data_stack.pop())
             else:
-                runtimeError("Operands must be two numbers or two strings.", vmRuntimeReadOnlyMain, vmRuntimeCallstack)
+                runtimeError("Operands must be two numbers or two strings.", vm_runtime_read_only_main, vmRuntimeCallstack)
                 return False    
         elif instruction_value == sp.ContextOpcode.OP_LOOP:
-            offset, vmRuntimeCallstack[-1].ip = read_short(vmRuntimeReadOnlyMain, vmRuntimeCallstack[-1])
+            offset, vmRuntimeCallstack[-1].ip = read_short(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
             vmRuntimeCallstack[-1].ip -= offset
         elif instruction_value == sp.ContextOpcode.OP_JUMP:
-            offset, vmRuntimeCallstack[-1].ip = read_short(vmRuntimeReadOnlyMain, vmRuntimeCallstack[-1])
+            offset, vmRuntimeCallstack[-1].ip = read_short(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
             vmRuntimeCallstack[-1].ip += offset
         elif instruction_value == sp.ContextOpcode.OP_JUMP_IF_FALSE:
-            offset, vmRuntimeCallstack[-1].ip = read_short(vmRuntimeReadOnlyMain, vmRuntimeCallstack[-1])
+            offset, vmRuntimeCallstack[-1].ip = read_short(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
             if is_falsey(data_stack[-1]):
                 vmRuntimeCallstack[-1].ip += offset
         elif instruction_value == sp.ContextOpcode.OP_CALL:
-            arg_count, vmRuntimeCallstack[-1].ip = read_byte(vmRuntimeReadOnlyMain, vmRuntimeCallstack[-1])
-            if (not call_value(vmRuntimeReadOnlyMain, vmRuntimeCallstack, data_stack, 
+            arg_count, vmRuntimeCallstack[-1].ip = read_byte(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
+            if (not call_value(vm_runtime_read_only_main, vmRuntimeCallstack, data_stack, 
                     data_stack[-(arg_count + 1)], arg_count)):
                 return False
 
-def call_value(vmRuntimeReadOnlyMain: VMRuntimeReadOnlyData, call_stack: typing.List[CallStackSingleElement], 
+def call_value(vm_runtime_read_only_main: VMRuntimeReadOnlyData, call_stack: typing.List[CallStackSingleElement], 
         data_stack: typing.List, callee_function_context: sp.Context, arg_count: int) -> bool:
     new_function_address = callee_function_context.function_address
-    if (new_function_address not in vmRuntimeReadOnlyMain.contextmap):
+    if (new_function_address not in vm_runtime_read_only_main.contextmap):
         print("Can only call functions and classes")
     else:
         #Todo: Fix
-        return call(vmRuntimeReadOnlyMain, callee_function_context, arg_count, call_stack, data_stack)
+        return call(vm_runtime_read_only_main, callee_function_context, arg_count, call_stack, data_stack)
 
-def call(vmRuntimeReadOnlyMain: VMRuntimeReadOnlyData, context: sp.Context, arg_count: int, call_stack: typing.List[CallStackSingleElement], data_stack: typing.List) -> bool:
+def call(vm_runtime_read_only_main: VMRuntimeReadOnlyData, context: sp.Context, arg_count: int, call_stack: typing.List[CallStackSingleElement], data_stack: typing.List) -> bool:
     if (arg_count != context.arity):
         # runtimeError(5, call_stack)
-        runtimeError(f'Expected {context.arity} arguments but got {arg_count}', vmRuntimeReadOnlyMain, call_stack)
+        runtimeError(f'Expected {context.arity} arguments but got {arg_count}', vm_runtime_read_only_main, call_stack)
         return False
     if (len(call_stack) > CALL_STACK_MAX):
         # print("Stack overflow")
-        runtimeError("Stack overflow", vmRuntimeReadOnlyMain, call_stack)
+        runtimeError("Stack overflow", vm_runtime_read_only_main, call_stack)
         return False
     call_stack.append(CallStackSingleElement(context.function_address, context.first_instruction_address, len(data_stack) -(arg_count + 1)))
     return True
