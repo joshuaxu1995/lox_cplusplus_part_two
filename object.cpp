@@ -63,6 +63,9 @@ void printObject(Value value) {
         case OBJ_FUNCTION:
             printFunction(asFunction(value));
             break;
+        case OBJ_NATIVE:
+            printf("<native fn>");
+            break;
         case OBJ_STRING:
             printf("%s", asCstring(value));
             break;
@@ -86,8 +89,22 @@ ObjFunction* newFunction() {
     return function;
 }
 
+ObjNative* newNative(NativeFn function) {
+    ObjNative* native = allocateObj<ObjNative>(OBJ_NATIVE);
+    native->function = function;
+    return native;
+}
+
 ObjType objType(Value value){
     return asObj(value)->type;
+}
+
+bool isNative(Value value){
+    return isObjType(value, OBJ_NATIVE);
+}
+
+NativeFn asNative(Value value){
+    return ((ObjNative*) asObj(value))->function;
 }
 
 bool isString(Value value){

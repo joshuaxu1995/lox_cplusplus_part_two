@@ -33,6 +33,8 @@ void serializeConstantVals(serializationPackage::Context* context, ObjFunction* 
             valueType.set_stringaddress((uintptr_t) (ObjString*) myValue.as.obj);
         } else if (isObj(myValue) && isFunction(myValue)){
             valueType.set_functionaddress((uintptr_t) (ObjFunction*) myValue.as.obj);
+        } else if (isObj(myValue) && isNative(myValue)){
+            std::cout << "hi";
         }
         contextConstantMap[i] = valueType;
         // int hi = 32;

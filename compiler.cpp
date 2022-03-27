@@ -145,7 +145,7 @@ static void insertInstructionsIntoMapSet(int count){
     }
     int index = current->function->chunk.count - 1;
     // std::cout<< "Printing index: " << index << " and name: " << name << " and address: " <<
-        (uint64_t) &current->function->chunk.code[index];
+        // (uint64_t) &current->function->chunk.code[index];
     if (count == 1){
         locationsOfNonInstructions[name].insert((uint64_t) &current->function->chunk.code[index]);
     } else if (count == 2){

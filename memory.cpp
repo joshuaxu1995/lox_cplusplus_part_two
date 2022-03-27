@@ -30,6 +30,10 @@ static void freeObject(Obj* object) {
             free<Obj>(object);
             break;
         }
+        case OBJ_NATIVE: {
+            free<ObjNative>((ObjNative*) object);
+            break;
+        }
         case OBJ_STRING: {
             ObjString* string = (ObjString*) object;
             freeArray<char>(string->chars, string->length + 1);

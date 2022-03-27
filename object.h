@@ -5,6 +5,7 @@
 
 typedef enum {
     OBJ_FUNCTION,
+    OBJ_NATIVE,
     OBJ_STRING
 } ObjType;
 
@@ -20,6 +21,13 @@ typedef struct {
     ObjString* name;
 } ObjFunction;
 
+typedef Value (*NativeFn) (int argCount, Value* args);
+
+typedef struct {
+    Obj obj;
+    NativeFn function;
+} ObjNative;
+
 struct ObjString {
     Obj obj;
     int length;
@@ -28,6 +36,7 @@ struct ObjString {
 };
 
 ObjFunction* newFunction();
+ObjNative* newNative(NativeFn function);
 static Obj* allocateObject(size_t size, ObjType type);
 
 template <typename T>
@@ -41,6 +50,8 @@ static inline bool isObjType(Value value, ObjType type){
     return isObj(value) && asObj(value)->type == type;
 }
 
+bool isNative(Value value);
+NativeFn asNative(Value value);
 bool isFunction(Value value);
 ObjFunction* asFunction(Value value);
 ObjType objType(Value value);

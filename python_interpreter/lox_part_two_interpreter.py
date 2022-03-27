@@ -1,6 +1,8 @@
 from recordclass import recordclass, RecordClass
 from dis import dis
 import sys
+import time
+import types
 import typing
 import operator
 import betterproto
@@ -98,6 +100,7 @@ def runtimeError(instruction_text: str, vmRuntimeReadOnlyData: VMRuntimeReadOnly
         else:
             print(f'{context_function_name}()')
 
+
 def run_file(path: str):
     vmdata = load_vmdata(path)
 
@@ -108,8 +111,18 @@ def run_file(path: str):
     data_stack = [vm_runtime_read_only_main.contextmap[initial_context_ptr]]
     call(vm_runtime_read_only_main, vm_runtime_read_only_main.contextmap[initial_context_ptr], 0, vmRuntimeCallstack, data_stack)
     vm_runtime_write_only_main = VMRuntimeWriteOnlyData(vmRuntimeCallstack, {})
-
+    define_native("clock", clock_native, data_stack, vm_runtime_write_only_main.global_data)
     run(vm_runtime_read_only_main, vm_runtime_write_only_main, data_stack)
+
+def clock_native(arg_count: int, args):
+    return time.process_time()
+
+def define_native(name: str, function_body, data_stack: typing.List, global_data):
+    data_stack.append(name)
+    data_stack.append(function_body)
+    global_data[name] = function_body
+    data_stack.pop()
+    data_stack.pop()
 
 def load_vmdata(path: str) -> sp.VMData():
     vmdata = sp.VMData()
@@ -166,7 +179,7 @@ def run(vm_runtime_read_only_main, vm_runtime_write_only_main, data_stack):
 
     while True:
         instruction_value, vmRuntimeCallstack[-1].ip = read_byte(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
-        print("Executing instruction value: " + str(sp.ContextOpcode(instruction_value)))
+        # print("Executing instruction value: " + str(sp.ContextOpcode(instruction_value)))
         if instruction_value == sp.ContextOpcode.OP_CONSTANT:
             constant, vmRuntimeCallstack[-1].ip = read_constant(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
             data_stack.append(constant)
@@ -272,12 +285,21 @@ def run(vm_runtime_read_only_main, vm_runtime_write_only_main, data_stack):
 
 def call_value(vm_runtime_read_only_main: VMRuntimeReadOnlyData, call_stack: typing.List[CallStackSingleElement], 
         data_stack: typing.List, callee_function_context: sp.Context, arg_count: int) -> bool:
-    new_function_address = callee_function_context.function_address
-    if (new_function_address not in vm_runtime_read_only_main.contextmap):
-        print("Can only call functions and classes")
+    
+    if isinstance(callee_function_context, types.FunctionType):
+        result = callee_function_context(arg_count, [])
+        del data_stack[len(data_stack) - (arg_count + 1):]
+        data_stack.append(result)
+        return True
+    elif isinstance(callee_function_context, sp.Context):
+        new_function_address = callee_function_context.function_address
+        if (new_function_address not in vm_runtime_read_only_main.contextmap):
+            print("Can only call functions and classes")
+        else:
+            #Todo: Fix
+            return call(vm_runtime_read_only_main, callee_function_context, arg_count, call_stack, data_stack)
     else:
-        #Todo: Fix
-        return call(vm_runtime_read_only_main, callee_function_context, arg_count, call_stack, data_stack)
+        runtimeError("Invalid type", vm_runtime_read_only_main, call_stack)
 
 def call(vm_runtime_read_only_main: VMRuntimeReadOnlyData, context: sp.Context, arg_count: int, call_stack: typing.List[CallStackSingleElement], data_stack: typing.List) -> bool:
     if (arg_count != context.arity):
