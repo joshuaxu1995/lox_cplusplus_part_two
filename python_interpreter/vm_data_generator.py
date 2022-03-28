@@ -58,4 +58,7 @@ def build_instruction_map_and_initial_context(contexts: typing.List[sp.Context])
         if context.context_name == "":
             initial_context_ptr = context_ptr
     return context_map, initial_context_ptr
+<<<<<<< HEAD
 
+=======
+>>>>>>> main
