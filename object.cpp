@@ -40,7 +40,9 @@ ObjString* copyString(const char* chars, int length) {
 
 ObjUpvalue* newUpvalue(Value* slot) {
     ObjUpvalue* upvalue = allocateObj<ObjUpvalue>(OBJ_UPVALUE);
+    upvalue->closed = nilVal();
     upvalue->location = slot;
+    upvalue->next =NULL;
     return upvalue;
 }
 
