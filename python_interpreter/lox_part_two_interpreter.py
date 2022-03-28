@@ -7,10 +7,7 @@ import typing
 import operator
 import betterproto
 from lib import serializationPackage as sp
-
-VMRuntimeReadOnlyData = recordclass("VMRuntimeReadOnlyData", 'stringmap contextmap initial_context_ptr')
-CallStackSingleElement = recordclass("CallStackDataModel", 'funcPointer ip slot_offset')
-VMRuntimeWriteOnlyData = recordclass("VMRuntimeWriteOnlyData", 'callstack global_data')
+from vm_data_generator import VMRuntimeReadOnlyData, CallStackSingleElement, generate_vm_data
 
 CALL_STACK_MAX = 100
 
@@ -46,7 +43,6 @@ def read_constant(vm_read_only: VMRuntimeReadOnlyData, call_stack: CallStackSing
 def read_short(vm_read_only: VMRuntimeReadOnlyData, call_stack: CallStackSingleElement):
     new_instruction_counter = call_stack.ip + 2
     context: sp.Context =  vm_read_only.contextmap[call_stack.funcPointer]
-    # instruction_value = vmdata.instructions[value]
 
     second_last_instruction = context.instruction_vals[new_instruction_counter - 2].address_or_constant if \
         betterproto.which_one_of(context.instruction_vals[new_instruction_counter - 2], "InstructionTypes")[0] == 'address_or_constant' \
@@ -59,35 +55,10 @@ def read_short(vm_read_only: VMRuntimeReadOnlyData, call_stack: CallStackSingleE
         else context.instruction_vals[new_instruction_counter - 1].opcode
 
     second_value = first_value | last_instruction
-    # first_value = vm_read_only.instructions[new_instruction_counter - 2] << 8
-    # second_value = first_value | vmdata.instructions[new_instruction_counter - 1]
     return second_value, new_instruction_counter
-
-# def read_byte(vmdata:sp.VMData, current: int):
-#     # breakpoint()
-#     return (vmdata.instructions[current], current + 1)
-
-
-# def read_constant(vmdata:sp.VMData, current: int):
-#     byte_num, instruction_counter = read_byte(vmdata, current)
-#     current_value =  vmdata.constant_vals[byte_num]
-#     # breakpoint()
-#     if (betterproto.which_one_of(current_value, "ValueTypes")[0] == 'object_address'):
-#         return (vmdata.string_map[current_value.object_address], instruction_counter)
-#     elif (betterproto.which_one_of(current_value, "ValueTypes")[0] == 'num_val'):
-#         return (current_value.num_val, instruction_counter)
-#     elif (betterproto.which_one_of(current_value, "ValueTypes")[0] == 'bool_val'):
-#         return (current_value.bool_val, instruction_counter)
 
 def read_string(vmdata:sp.VMData, current: int):
     return read_constant(vmdata, current)
-
-# def read_short(vmdata:sp.VMData, current: int):
-#     new_instruction_counter = current + 2
-#     # instruction_value = vmdata.instructions[value]
-#     first_value = vmdata.instructions[new_instruction_counter - 2] << 8
-#     second_value = first_value | vmdata.instructions[new_instruction_counter - 1]
-#     return second_value, new_instruction_counter
 
 def runtimeError(instruction_text: str, vmRuntimeReadOnlyData: VMRuntimeReadOnlyData, 
         call_stack: typing.List[CallStackSingleElement]):
@@ -99,37 +70,6 @@ def runtimeError(instruction_text: str, vmRuntimeReadOnlyData: VMRuntimeReadOnly
             print("script\n")
         else:
             print(f'{context_function_name}()')
-
-
-def run_file(path: str):
-    vmdata = load_vmdata(path)
-
-    runtime_string_map = build_string_map(vmdata.strings_at_addresses)
-    runtime_instruction_context_map, initial_context_ptr = build_instruction_map_and_initial_context(vmdata.contexts)
-    vm_runtime_read_only_main = VMRuntimeReadOnlyData(runtime_string_map, runtime_instruction_context_map, initial_context_ptr)
-    vmRuntimeCallstack = []
-    data_stack = [vm_runtime_read_only_main.contextmap[initial_context_ptr]]
-    call(vm_runtime_read_only_main, vm_runtime_read_only_main.contextmap[initial_context_ptr], 0, vmRuntimeCallstack, data_stack)
-    vm_runtime_write_only_main = VMRuntimeWriteOnlyData(vmRuntimeCallstack, {})
-    define_native("clock", clock_native, data_stack, vm_runtime_write_only_main.global_data)
-    run(vm_runtime_read_only_main, vm_runtime_write_only_main, data_stack)
-
-def clock_native(arg_count: int, args):
-    return time.process_time()
-
-def define_native(name: str, function_body, data_stack: typing.List, global_data):
-    data_stack.append(name)
-    data_stack.append(function_body)
-    global_data[name] = function_body
-    data_stack.pop()
-    data_stack.pop()
-
-def load_vmdata(path: str) -> sp.VMData():
-    vmdata = sp.VMData()
-    f = open(path, "rb")
-    vmdata.parse(f.read())
-    f.close()
-    return vmdata
 
 
 def binaryOp(vm_runtime_read_only_main, vmRuntimeCallstack, current_stack, passed_func, the_type):
@@ -150,36 +90,13 @@ def concatenate(str1: str, str2: str):
     total_str = str1 + str2
     return total_str
 
-def build_string_map(string_data):
-    string_map = {}
-    for string_datum in string_data:
-        string_map[string_data[string_datum].address] = string_datum
-    
-    return string_map
-
-def build_instruction_map_and_initial_context(contexts: typing.List[sp.Context]):
-    context_map = {}
-    initial_context_ptr = -1
-    for context in contexts:
-        context_ptr = context.function_address
-        #sort dict here:
-        context.instruction_vals = dict(sorted(context.instruction_vals.items(), key=lambda item: item[0]))
-        context_map[context_ptr] = context
-        if context.context_name == "":
-            initial_context_ptr = context_ptr
-    return context_map, initial_context_ptr
-
-def get_first_instruction(vmReadOnlyData: VMRuntimeReadOnlyData, function_ptr: int):
-    curr_context = vmReadOnlyData.contextmap[function_ptr]
-    return curr_context.first_instruction_address
-
 
 def run(vm_runtime_read_only_main, vm_runtime_write_only_main, data_stack):
     vmRuntimeCallstack = vm_runtime_write_only_main.callstack
 
     while True:
         instruction_value, vmRuntimeCallstack[-1].ip = read_byte(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
-        # print("Executing instruction value: " + str(sp.ContextOpcode(instruction_value)))
+        print("Executing instruction value: " + str(sp.ContextOpcode(instruction_value)))
         if instruction_value == sp.ContextOpcode.OP_CONSTANT:
             constant, vmRuntimeCallstack[-1].ip = read_constant(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
             data_stack.append(constant)
@@ -317,7 +234,9 @@ def main():
     if len(sys.argv) > 2 or len(sys.argv) < 2:
         print("Usage: plox [script]")
     elif len(sys.argv) == 2:
-        run_file(sys.argv[1])
+        (vm_runtime_read_only_main, vm_runtime_write_only_main, data_stack, initial_context_ptr) = generate_vm_data(sys.argv[1])
+        call(vm_runtime_read_only_main, vm_runtime_read_only_main.contextmap[initial_context_ptr], 0, vm_runtime_write_only_main.callstack, data_stack)
+        run(vm_runtime_read_only_main, vm_runtime_write_only_main, data_stack)
 
 if __name__ == "__main__":
     main()
