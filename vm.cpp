@@ -46,6 +46,7 @@ static Value clockNative(int argCount, Value* args) {
 static void resetStack() {
     vm.stackTop = vm.stack;
     vm.frameCount = 0;
+    vm.openUpvalues = NULL;
 }
 
 static void runtimeError(const char* format, ...) {
@@ -56,7 +57,7 @@ static void runtimeError(const char* format, ...) {
     fputs("\n", stderr);
     for (int i = vm.frameCount - 1; i >= 0; i--){
         CallFrame* frame = &vm.frames[i];
-        ObjFunction* function = frame->function;
+        ObjFunction* function = frame->closure->function;
         size_t instruction = frame->ip - function->chunk.code - 1;
         int line = function->chunk.lines[instruction];
         fprintf(stderr, "[line %d] in script\n", line);
@@ -107,10 +108,10 @@ Value peek(int distance){
     return val;
 }
 
-static bool call(ObjFunction* function, int argCount) {
-    if (argCount != function->arity){
+static bool call(ObjClosure* closure, int argCount) {
+    if (argCount != closure->function->arity){
         runtimeError("Expected %d arguments but got %d.", 
-            function->arity, argCount);
+            closure->function->arity, argCount);
         return false;
     }
 
@@ -120,8 +121,8 @@ static bool call(ObjFunction* function, int argCount) {
     }
 
     CallFrame* frame = &vm.frames[vm.frameCount++];
-    frame->function = function;
-    frame->ip = function->chunk.code;
+    frame->closure = closure;
+    frame->ip = closure->function->chunk.code;
     frame->slots = vm.stackTop - argCount - 1;
     return true;
 }
@@ -129,8 +130,8 @@ static bool call(ObjFunction* function, int argCount) {
 static bool callValue(Value callee, int argCount) {
     if (isObj(callee)){
         switch (objType(callee)){
-            case OBJ_FUNCTION:
-                return call(asFunction(callee), argCount);
+            case OBJ_CLOSURE:
+                return call(asClosure(callee), argCount);
             case OBJ_NATIVE: {
                 NativeFn native = asNative(callee);
                 Value result = native(argCount, vm.stackTop - argCount);
@@ -144,6 +145,36 @@ static bool callValue(Value callee, int argCount) {
     }
     runtimeError("Can only call functions and classes.");
     return false;
+}
+
+static ObjUpvalue* captureUpvalue(Value* local) {
+    ObjUpvalue* prevUpvalue = NULL;
+    ObjUpvalue* upvalue = vm.openUpvalues;
+    while (upvalue != NULL && upvalue->location > local) {
+        prevUpvalue = upvalue;
+        upvalue = upvalue->next;
+    }
+
+    if (upvalue != NULL && upvalue->location == local) {
+        return upvalue;
+    }
+
+    ObjUpvalue* createdUpvalue = newUpvalue(local);
+    if (prevUpvalue == NULL) {
+        vm.openUpvalues = createdUpvalue;
+    } else{
+        prevUpvalue->next = createdUpvalue;
+    }
+    return createdUpvalue;
+}
+
+static void closeUpvalues(Value* last) {
+    while (vm.openUpvalues != NULL && vm.openUpvalues->location >= last) {
+        ObjUpvalue* upvalue = vm.openUpvalues;
+        upvalue->closed = *upvalue->location;
+        upvalue->location = &upvalue->closed;
+        vm.openUpvalues = upvalue->next;
+    }
 }
 
 static bool isFalsey(Value value) {
@@ -171,7 +202,7 @@ u_int8_t readByte(){
 Value readConstant(){
     u_int8_t byteNum = readByte();
     CallFrame* frame = &vm.frames[vm.frameCount - 1];
-    return frame->function->chunk.constants.values[byteNum];
+    return frame->closure->function->chunk.constants.values[byteNum];
 }
 
 u_int16_t readShort(){
@@ -199,8 +230,8 @@ void debugTraceExecution(){
         printf(" ]");
     }
     printf("\n");
-    disassembleInstruction(&frame->function->chunk, (int) (frame->ip - 
-        frame->function->chunk.code));
+    disassembleInstruction(&frame->closure->function->chunk, (int) (frame->ip - 
+        frame->closure->function->chunk.code));
 }
 
 template<typename T>
@@ -274,7 +305,8 @@ static InterpretResult run() {
         // std::cout << "Printing instruction string value: " << arrayForPrinting[instruction] << std::endl;
         switch(instruction){
             case OP_PRINT: {
-                printValue(pop());
+                Value value = pop();
+                printValue(value);
                 printf("\n");
                 break;
             }
@@ -291,8 +323,24 @@ static InterpretResult run() {
                 frame = &vm.frames[vm.frameCount - 1];
                 break;
             }
+            case OP_CLOSURE: {
+                ObjFunction* function = asFunction(readConstant());
+                ObjClosure* closure = newClosure(function);
+                push(objVal((Obj*) closure));
+                for (int i = 0; i < closure->upvalueCount; i++){
+                    uint8_t isLocal = readByte();
+                    uint8_t index = readByte();
+                    if (isLocal) {
+                        closure->upvalues[i] = captureUpvalue(frame->slots + index);
+                    } else{
+                        closure->upvalues[i] = frame->closure->upvalues[index];
+                    }
+                }
+                break;
+            }
             case OP_RETURN: {
                 Value result = pop();
+                closeUpvalues(frame->slots);
                 vm.frameCount--;
                 if (vm.frameCount == 0) {
                     pop();
@@ -357,6 +405,21 @@ static InterpretResult run() {
                     runtimeError("Undefined variable '%s'.", name->chars);
                     return INTERPRET_RUNTIME_ERROR;
                 }
+                break;
+            }
+            case OP_GET_UPVALUE: {
+                uint8_t slot = readByte();
+                push(*frame->closure->upvalues[slot]->location);
+                break;
+            }
+            case OP_SET_UPVALUE: {
+                uint8_t slot = readByte();
+                *frame->closure->upvalues[slot]->location = peek(0);
+                break;
+            }
+            case OP_CLOSE_UPVALUE: {
+                closeUpvalues(vm.stackTop - 1);
+                pop();
                 break;
             }
             case OP_EQUAL: {
@@ -439,7 +502,10 @@ InterpretResult interpret(const char* source) {
     if (function == NULL) return INTERPRET_COMPILE_ERROR;
 
     push(objVal((Obj*) function));
-    call(function, 0);
+    ObjClosure* closure = newClosure(function);
+    pop();
+    push(objVal((Obj*) closure));
+    call(closure, 0);
 
     serializationPackage::VMData vmData = serializeVMData(vm, locationOfFunctions, locationsOfNonInstructions);
     std::fstream output("VMDataFile.txt", std::ios::out | std::ios::trunc | std::ios::binary);
