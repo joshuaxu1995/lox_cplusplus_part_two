@@ -43,11 +43,6 @@ typedef struct {
     bool isCaptured;
 } Local;
 
-typedef struct {
-    uint8_t index;
-    bool isLocal;
-} Upvalue;
-
 typedef enum {
     TYPE_FUNCTION,
     TYPE_SCRIPT
@@ -67,6 +62,7 @@ typedef struct Compiler {
 Parser parser;
 Compiler* current = NULL;
 std::vector<ObjFunction*> locationOfFunctions;
+std::vector<Upvalue*> locationOfUpvalues;
 std::unordered_map<std::string, std::set<uint64_t>> locationsOfNonInstructions;
 
 // Chunk* compilingChunk;
@@ -240,8 +236,11 @@ static ObjFunction* endCompiler() {
         disassembleChunk(currentChunk(), function->name != NULL 
             ? function->name->chars : "<script>");
     }
-    current = current->enclosing;
     locationOfFunctions.push_back(function);
+    for (int i = 0; i < current->function->upvalueCount; i++){
+        locationOfUpvalues.push_back(&current->upvalues[i]);
+    }
+    current = current->enclosing;
     return function;
 }
 

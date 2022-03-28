@@ -1,22 +1,6 @@
 #include "serialize.h"
 #include <typeinfo>
 
-void serializeInstructions(serializationPackage::VMData* vmData, Chunk* chunk){
-    // int hi = 32;
-    // // std::cout<< "INITIAL: Printing vmDatamap instructions size: " << vmData->instructions().size()
-    // //         << std::endl;
-    // for (int i = 0; i < chunk->count; i++){
-    //     uint8_t* addressOfFirstEntry = chunk->code + i;
-    //     uint64_t printedValueAddress = (uint64_t) addressOfFirstEntry;
-    //     // std::cout<< "Printing addressoffirstentry: " << printedValueAddress << std::endl;
-    //     uint8_t actualValue = *addressOfFirstEntry;
-    //     vmData->add_instructions(actualValue);
-    //     // std::cout<< "Printing vmDatamap instructions size: " << vmData->instructions().size()
-    //         // << std::endl;
-    // }
-}
-
-
 void serializeConstantVals(serializationPackage::Context* context, ObjFunction* locationOfFunction){
     auto& contextConstantMap = *(context->mutable_constantvals());
     std::string name = context->contextname();
@@ -92,38 +76,6 @@ void serializeContexts(serializationPackage::VMData* vmData, std::vector<ObjFunc
     }
 }
 
-void serializeConstants(serializationPackage::VMData* vmData, Chunk* chunk){
-    // auto& vmDataMap = *(vmData->mutable_constantvals());
-    // for (int i = 0; i < chunk->constants.count; i++){
-    //     Value* valuePointer = chunk->constants.values + i;
-    //     Value myValue = *valuePointer;
-    //     serializationPackage::ValueType valueType;
-    //     if (isBool(myValue)){
-    //         // valueType.set
-    //         valueType.set_boolval(asBool(myValue));
-    //     } else if (isNumber(myValue)){
-    //         valueType.set_numval(asNumber(myValue));
-    //     } else if (isObj(myValue)){
-    //         valueType.set_objectaddress((uintptr_t) myValue.as.obj);
-    //     }
-    //     vmDataMap[i] = valueType;
-    //     int hi = 32;
-    // }
-}
-
-//Old way of serialization
-// void serializeStrings(serializationPackage::VMData* vmData, Obj* obj){
-//     auto& vmDataMap = *(vmData->mutable_stringsataddresses());
-//     while (obj != NULL){
-//         ObjString* tempString = (ObjString*) obj;
-//         serializationPackage::VMData_AddressAndHash addressAndHash;
-//         addressAndHash.set_address(reinterpret_cast<uintptr_t>(obj));
-//         addressAndHash.set_hash(tempString->hash);
-//         vmDataMap[tempString->chars] = addressAndHash;
-//         obj = obj->next;
-//     }
-// }
-
 void serializeStrings(serializationPackage::VMData* vmData, Table stringTable){
     auto& vmDataMap = *(vmData->mutable_stringsataddresses());
     for (int i = 0; i < stringTable.capacity; i++){
@@ -138,14 +90,25 @@ void serializeStrings(serializationPackage::VMData* vmData, Table stringTable){
     }
 }
 
+void serializeClosures(serializationPackage::VMData* vmData, std::vector<Upvalue*> locationOfUpvalues){
+    for (auto& element: locationOfUpvalues){
+        serializationPackage::VMData_Upvalue* upvalue = vmData->add_upvalues();
+        upvalue->set_location((uint64_t) element);
+        upvalue->set_index(element->index);
+        upvalue->set_islocal(element->isLocal);
+    }
+}
+
 serializationPackage::VMData serializeVMData(VM vm, std::vector<ObjFunction*> locationOfFunctions, 
-        std::unordered_map<std::string, std::set<uint64_t>> locationsOfNonInstructions){
+        std::unordered_map<std::string, std::set<uint64_t>> locationsOfNonInstructions,
+        std::vector<Upvalue*> locationOfUpvalues){
     serializationPackage::VMData vmdata;
     serializationPackage::ValueType valueType;
     serializeContexts(&vmdata, locationOfFunctions, locationsOfNonInstructions);
+    serializeClosures(&vmdata, locationOfUpvalues);
     // serializeConstants(&vmdata, vm.chunk);
     serializeStrings(&vmdata, vm.strings);
     // serializeInstructions(&vmdata, vm.chunk);
-    // std::cout<< vmdata.DebugString();
+    std::cout<< vmdata.DebugString();
     return vmdata;
 }

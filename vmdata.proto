@@ -5,10 +5,16 @@ package serializationPackage;
 message VMData {
   repeated Context contexts = 1;
   map<string, AddressAndHash> stringsAtAddresses = 2;
+  repeated Upvalue upvalues = 3;
 
   message AddressAndHash{
     int64 address = 1;
     int32 hash = 2;
+  }
+  message Upvalue{
+    int64 location = 1;
+    int32 isLocal = 2;
+    int32 index = 3;
   }
 }
 
@@ -50,7 +56,8 @@ message Context {
     OP_LOOP = 24;
     OP_CALL = 25;
     OP_CLOSURE = 26;
-    OP_RETURN = 27;
+    OP_CLOSE_UPVALUE = 27;
+    OP_RETURN = 28;
     OP_PLACEHOLDER = 255;
   } 
 }
