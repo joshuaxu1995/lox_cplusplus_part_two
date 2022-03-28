@@ -4,9 +4,11 @@
 #include "value.h"
 
 typedef enum {
+    OBJ_CLOSURE,
     OBJ_FUNCTION,
     OBJ_NATIVE,
-    OBJ_STRING
+    OBJ_STRING,
+    OBJ_UPVALUE
 } ObjType;
 
 struct Obj {
@@ -17,6 +19,7 @@ struct Obj {
 typedef struct {
     Obj obj;
     int arity;
+    int upvalueCount;
     Chunk chunk;
     ObjString* name;
 } ObjFunction;
@@ -35,6 +38,21 @@ struct ObjString {
     uint32_t hash;
 };
 
+typedef struct ObjUpvalue {
+    Obj obj;
+    Value* location;
+    Value closed;
+    struct ObjUpvalue* next;
+} ObjUpvalue;
+
+typedef struct {
+    Obj obj;
+    ObjFunction* function;
+    ObjUpvalue** upvalues;
+    int upvalueCount;
+} ObjClosure;
+
+ObjClosure* newClosure(ObjFunction* function);
 ObjFunction* newFunction();
 ObjNative* newNative(NativeFn function);
 static Obj* allocateObject(size_t size, ObjType type);
@@ -50,6 +68,9 @@ static inline bool isObjType(Value value, ObjType type){
     return isObj(value) && asObj(value)->type == type;
 }
 
+
+bool isClosure(Value value);
+ObjClosure* asClosure(Value value);
 bool isNative(Value value);
 NativeFn asNative(Value value);
 bool isFunction(Value value);
@@ -60,4 +81,5 @@ ObjString* asString(Value value);
 char* asCstring(Value value);
 ObjString* takeString(char* chars, int length);
 ObjString* copyString(const char* chars, int length);
+ObjUpvalue* newUpvalue(Value* slot);
 void printObject(Value value);

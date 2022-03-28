@@ -64,7 +64,7 @@ int main(int argc, const char *argv[])
 {
     initVM();
     if (argc == 1) {
-        runFile("../test_scripts/benchmark_fibonacci.txt");
+        runFile("../test_scripts/closed_upvalues.lox");
     }
     else if (argc == 2){
         runFile(argv[1]);

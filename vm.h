@@ -7,7 +7,7 @@ const int FRAMES_MAX = 64;
 const int STACK_MAX = FRAMES_MAX * 2;
 
 typedef struct {
-    ObjFunction* function;
+    ObjClosure* closure;
     uint8_t* ip;
     Value* slots;
 } CallFrame;
@@ -20,6 +20,7 @@ typedef struct {
     Value* stackTop;
     Table globals;
     Table strings;
+    ObjUpvalue* openUpvalues;
     Obj* objects;
 } VM;
 

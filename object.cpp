@@ -38,6 +38,14 @@ ObjString* copyString(const char* chars, int length) {
     return allocateString(heapChars, length, hash);
 }
 
+ObjUpvalue* newUpvalue(Value* slot) {
+    ObjUpvalue* upvalue = allocateObj<ObjUpvalue>(OBJ_UPVALUE);
+    upvalue->closed = nilVal();
+    upvalue->location = slot;
+    upvalue->next =NULL;
+    return upvalue;
+}
+
 ObjString* takeString(char* chars, int length) {
     uint32_t hash = hashString(chars, length);
     ObjString* interned = tableFindString(&vm.strings, chars, length, hash);
@@ -60,6 +68,9 @@ static void printFunction(ObjFunction* function){
 
 void printObject(Value value) {
     switch (objType(value)) {
+        case OBJ_CLOSURE:
+            printFunction(asClosure(value)->function);
+            break;
         case OBJ_FUNCTION:
             printFunction(asFunction(value));
             break;
@@ -68,6 +79,9 @@ void printObject(Value value) {
             break;
         case OBJ_STRING:
             printf("%s", asCstring(value));
+            break;
+        case OBJ_UPVALUE:
+            printf("upvalue");
             break;
     }
 }
@@ -81,9 +95,22 @@ static Obj* allocateObject(size_t size, ObjType type){
     return object;
 }
 
+ObjClosure* newClosure(ObjFunction* function){
+    ObjUpvalue** upvalues = allocate<ObjUpvalue*>(function->upvalueCount);
+    for (int i = 0; i < function->upvalueCount; i++) {
+        upvalues[i] = NULL;
+    }
+    ObjClosure* closure = allocateObj<ObjClosure>(OBJ_CLOSURE);
+    closure->function = function;
+    closure->upvalues = upvalues;
+    closure->upvalueCount = function->upvalueCount;
+    return closure;
+}
+
 ObjFunction* newFunction() {
     ObjFunction* function = allocateObj<ObjFunction>(OBJ_FUNCTION);
     function->arity = 0;
+    function->upvalueCount = 0;
     function->name = NULL;
     initChunk(&function->chunk);
     return function;
@@ -97,6 +124,14 @@ ObjNative* newNative(NativeFn function) {
 
 ObjType objType(Value value){
     return asObj(value)->type;
+}
+
+bool isClosure(Value value){
+    return isObjType(value, OBJ_CLOSURE);
+}
+
+ObjClosure* asClosure(Value value){
+    return ((ObjClosure*) asObj(value));
 }
 
 bool isNative(Value value){
