@@ -38,6 +38,12 @@ ObjString* copyString(const char* chars, int length) {
     return allocateString(heapChars, length, hash);
 }
 
+ObjUpvalue* newUpvalue(Value* slot) {
+    ObjUpvalue* upvalue = allocateObj<ObjUpvalue>(OBJ_UPVALUE);
+    upvalue->location = slot;
+    return upvalue;
+}
+
 ObjString* takeString(char* chars, int length) {
     uint32_t hash = hashString(chars, length);
     ObjString* interned = tableFindString(&vm.strings, chars, length, hash);
@@ -72,6 +78,9 @@ void printObject(Value value) {
         case OBJ_STRING:
             printf("%s", asCstring(value));
             break;
+        case OBJ_UPVALUE:
+            printf("upvalue");
+            break;
     }
 }
 
@@ -85,8 +94,14 @@ static Obj* allocateObject(size_t size, ObjType type){
 }
 
 ObjClosure* newClosure(ObjFunction* function){
+    ObjUpvalue** upvalues = allocate<ObjUpvalue*>(function->upvalueCount);
+    for (int i = 0; i < function->upvalueCount; i++) {
+        upvalues[i] = NULL;
+    }
     ObjClosure* closure = allocateObj<ObjClosure>(OBJ_CLOSURE);
     closure->function = function;
+    closure->upvalues = upvalues;
+    closure->upvalueCount = function->upvalueCount;
     return closure;
 }
 

@@ -146,6 +146,6 @@ serializationPackage::VMData serializeVMData(VM vm, std::vector<ObjFunction*> lo
     // serializeConstants(&vmdata, vm.chunk);
     serializeStrings(&vmdata, vm.strings);
     // serializeInstructions(&vmdata, vm.chunk);
-    // std::cout<< vmdata.DebugString();
+    std::cout<< vmdata.DebugString();
     return vmdata;
 }

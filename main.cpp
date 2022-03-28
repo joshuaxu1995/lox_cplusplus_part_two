@@ -64,7 +64,7 @@ int main(int argc, const char *argv[])
 {
     initVM();
     if (argc == 1) {
-        runFile("../test_scripts/outer_middle_with_calls_closure.txt");
+        runFile("../test_scripts/outer_inner_basic_closure.txt");
     }
     else if (argc == 2){
         runFile(argv[1]);

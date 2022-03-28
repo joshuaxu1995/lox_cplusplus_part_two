@@ -146,6 +146,11 @@ static bool callValue(Value callee, int argCount) {
     return false;
 }
 
+static ObjUpvalue* captureUpvalue(Value* local) {
+    ObjUpvalue* createdUpvalue = newUpvalue(local);
+    return createdUpvalue;
+}
+
 static bool isFalsey(Value value) {
     return isNil(value) || (isBool(value) && !asBool(value));
 }
@@ -295,6 +300,15 @@ static InterpretResult run() {
                 ObjFunction* function = asFunction(readConstant());
                 ObjClosure* closure = newClosure(function);
                 push(objVal((Obj*) closure));
+                for (int i = 0; i < closure->upvalueCount; i++){
+                    uint8_t isLocal = readByte();
+                    uint8_t index = readByte();
+                    if (isLocal) {
+                        closure->upvalues[i] = captureUpvalue(frame->slots + index);
+                    } else{
+                        closure->upvalues[i] = frame->closure->upvalues[index];
+                    }
+                }
                 break;
             }
             case OP_RETURN: {
@@ -363,6 +377,16 @@ static InterpretResult run() {
                     runtimeError("Undefined variable '%s'.", name->chars);
                     return INTERPRET_RUNTIME_ERROR;
                 }
+                break;
+            }
+            case OP_GET_UPVALUE: {
+                uint8_t slot = readByte();
+                push(*frame->closure->upvalues[slot]->location);
+                break;
+            }
+            case OP_SET_UPVALUE: {
+                uint8_t slot = readByte();
+                *frame->closure->upvalues[slot]->location = peek(0);
                 break;
             }
             case OP_EQUAL: {
