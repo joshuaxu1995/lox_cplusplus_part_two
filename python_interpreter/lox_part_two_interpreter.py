@@ -72,37 +72,6 @@ def runtimeError(instruction_text: str, vmRuntimeReadOnlyData: VMRuntimeReadOnly
             print(f'{context_function_name}()')
 
 
-def run_file(path: str):
-    vmdata = load_vmdata(path)
-
-    runtime_string_map = build_string_map(vmdata.strings_at_addresses)
-    runtime_instruction_context_map, initial_context_ptr = build_instruction_map_and_initial_context(vmdata.contexts)
-    vm_runtime_read_only_main = VMRuntimeReadOnlyData(runtime_string_map, runtime_instruction_context_map, initial_context_ptr)
-    vmRuntimeCallstack = []
-    data_stack = [vm_runtime_read_only_main.contextmap[initial_context_ptr]]
-    call(vm_runtime_read_only_main, vm_runtime_read_only_main.contextmap[initial_context_ptr], 0, vmRuntimeCallstack, data_stack)
-    vm_runtime_write_only_main = VMRuntimeWriteOnlyData(vmRuntimeCallstack, {})
-    define_native("clock", clock_native, data_stack, vm_runtime_write_only_main.global_data)
-    run(vm_runtime_read_only_main, vm_runtime_write_only_main, data_stack)
-
-def clock_native(arg_count: int, args):
-    return time.process_time()
-
-def define_native(name: str, function_body, data_stack: typing.List, global_data):
-    data_stack.append(name)
-    data_stack.append(function_body)
-    global_data[name] = function_body
-    data_stack.pop()
-    data_stack.pop()
-
-def load_vmdata(path: str) -> sp.VMData():
-    vmdata = sp.VMData()
-    f = open(path, "rb")
-    vmdata.parse(f.read())
-    f.close()
-    return vmdata
-
-
 def binaryOp(vm_runtime_read_only_main, vmRuntimeCallstack, current_stack, passed_func, the_type):
     while True:
         if not type(current_stack[-1]) == float or not type(current_stack[-2]) == float:
@@ -127,7 +96,7 @@ def run(vm_runtime_read_only_main, vm_runtime_write_only_main, data_stack):
 
     while True:
         instruction_value, vmRuntimeCallstack[-1].ip = read_byte(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
-        # print("Executing instruction value: " + str(sp.ContextOpcode(instruction_value)))
+        print("Executing instruction value: " + str(sp.ContextOpcode(instruction_value)))
         if instruction_value == sp.ContextOpcode.OP_CONSTANT:
             constant, vmRuntimeCallstack[-1].ip = read_constant(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
             data_stack.append(constant)
