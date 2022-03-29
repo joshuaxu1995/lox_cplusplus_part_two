@@ -5,7 +5,6 @@ package serializationPackage;
 message VMData {
   repeated Context contexts = 1;
   map<string, AddressAndHash> stringsAtAddresses = 2;
-  // map<int64, Upvalue> upvalues = 3;
 
   message AddressAndHash{
     int64 address = 1;
