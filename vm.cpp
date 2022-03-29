@@ -6,6 +6,7 @@
 #include "debug.h"
 #include "vmdata.pb.h"
 #include "serialize.h"
+#include "memory.h"
 #include <fstream>
 
 
@@ -81,6 +82,13 @@ static void defineNative(const char* name, NativeFn function) {
 void initVM() {
     resetStack();
     vm.objects = NULL;
+    vm.bytesAllocated = 0;
+    vm.nextGC = 1024 * 1024;
+
+    vm.grayCount = 0;
+    vm.grayCapacity = 0;
+    vm.grayStack = NULL;
+
     initTable(&vm.globals);
     initTable(&vm.strings);
 
@@ -182,8 +190,8 @@ static bool isFalsey(Value value) {
 }
 
 static void concatenate() {
-    ObjString* b = asString(pop());
-    ObjString* a = asString(pop());
+    ObjString* b = asString(peek(0));
+    ObjString* a = asString(peek(1));
     int length = a->length + b->length;
     char* chars = allocate<char>(length + 1);
     memcpy(chars, a->chars, a->length);
@@ -191,6 +199,8 @@ static void concatenate() {
     chars[length] = '\0';
 
     ObjString* result = takeString(chars, length);
+    pop();
+    pop();
     push(objVal((Obj*) result));
 }
 

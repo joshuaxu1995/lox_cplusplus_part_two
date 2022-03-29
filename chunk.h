@@ -1,6 +1,5 @@
 #pragma once
 #include "common.h"
-#include "memory.h"
 #include "value.h"
 
 typedef enum

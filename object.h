@@ -1,7 +1,5 @@
 #pragma once
-
 #include "chunk.h"
-#include "value.h"
 
 typedef enum {
     OBJ_CLOSURE,
@@ -13,6 +11,7 @@ typedef enum {
 
 struct Obj {
     ObjType type;
+    bool isMarked;
     struct Obj* next;
 };
 
