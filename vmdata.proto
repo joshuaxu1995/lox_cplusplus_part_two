@@ -5,17 +5,17 @@ package serializationPackage;
 message VMData {
   repeated Context contexts = 1;
   map<string, AddressAndHash> stringsAtAddresses = 2;
-  repeated Upvalue upvalues = 3;
+  // map<int64, Upvalue> upvalues = 3;
 
   message AddressAndHash{
     int64 address = 1;
     int32 hash = 2;
   }
-  message Upvalue{
-    int64 location = 1;
-    int32 isLocal = 2;
-    int32 index = 3;
-  }
+}
+
+message Upvalue{
+  int32 isLocal = 1;
+  int32 index = 2;
 }
 
 message Context {
@@ -26,6 +26,8 @@ message Context {
   int64 firstInstructionAddress = 4;
   map<int64, ValueType> constantVals = 5;
   int32 arity = 6;
+  int32 upvalueCount = 7;
+  repeated Upvalue upvalues = 8;
 
   enum Opcode
   {

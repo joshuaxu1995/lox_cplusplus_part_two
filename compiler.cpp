@@ -62,7 +62,7 @@ typedef struct Compiler {
 Parser parser;
 Compiler* current = NULL;
 std::vector<ObjFunction*> locationOfFunctions;
-std::vector<Upvalue*> locationOfUpvalues;
+std::unordered_map<uint64_t, std::vector<Upvalue>> locationOfUpvalues;
 std::unordered_map<std::string, std::set<uint64_t>> locationsOfNonInstructions;
 
 // Chunk* compilingChunk;
@@ -238,7 +238,7 @@ static ObjFunction* endCompiler() {
     }
     locationOfFunctions.push_back(function);
     for (int i = 0; i < current->function->upvalueCount; i++){
-        locationOfUpvalues.push_back(&current->upvalues[i]);
+        locationOfUpvalues[(uint64_t) function].push_back(current->upvalues[i]);
     }
     current = current->enclosing;
     return function;

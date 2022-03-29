@@ -1,0 +1,23 @@
+fun outermost() {
+    var x = 7;
+    var y = 8;
+    var z = 9;
+    fun outer() {
+        var f = 6;
+        var a = 1;
+        var b = 2;
+        fun middle() {
+            var e = 5;
+            var c = 3;
+            var d = 4;
+            fun inner() {
+                print a + c + b + d + z;
+            }
+            inner();
+        }
+        middle();
+    }
+    outer();
+}
+
+outermost();
