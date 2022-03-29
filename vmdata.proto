@@ -12,6 +12,11 @@ message VMData {
   }
 }
 
+message Upvalue{
+  int32 isLocal = 1;
+  int32 index = 2;
+}
+
 message Context {
 
   string contextName = 1;
@@ -20,6 +25,8 @@ message Context {
   int64 firstInstructionAddress = 4;
   map<int64, ValueType> constantVals = 5;
   int32 arity = 6;
+  int32 upvalueCount = 7;
+  repeated Upvalue upvalues = 8;
 
   enum Opcode
   {
@@ -50,7 +57,8 @@ message Context {
     OP_LOOP = 24;
     OP_CALL = 25;
     OP_CLOSURE = 26;
-    OP_RETURN = 27;
+    OP_CLOSE_UPVALUE = 27;
+    OP_RETURN = 28;
     OP_PLACEHOLDER = 255;
   } 
 }

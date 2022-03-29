@@ -1,12 +1,33 @@
-
-from recordclass import recordclass, RecordClass
+from dataclasses import dataclass
 from lib import serializationPackage as sp
 import typing
 import time
 
-VMRuntimeReadOnlyData = recordclass("VMRuntimeReadOnlyData", 'stringmap contextmap initial_context_ptr')
-CallStackSingleElement = recordclass("CallStackDataModel", 'funcPointer ip slot_offset')
-VMRuntimeWriteOnlyData = recordclass("VMRuntimeWriteOnlyData", 'callstack global_data')
+
+@dataclass
+class VMRuntimeReadOnlyData:
+    """Class for keeping track of an item in inventory."""
+    stringmap: typing.Dict[int, str]
+    contextmap: typing.Dict[int, sp.Context]
+    initial_context_ptr: int
+
+@dataclass
+class CallStackSingleElement:
+    funcPointer: int
+    ip: int
+    slot_offset: int
+    upvalues: typing.List[sp.Upvalue]
+
+@dataclass
+class VMRuntimeWriteOnlyData:
+    callstack: typing.List[CallStackSingleElement]
+    global_data: typing.Dict
+
+@dataclass
+class RuntimeClosure:
+    function_ptr: int
+    upvalues: typing.List[sp.Upvalue]
+
 
 def load_vmdata(path: str) -> sp.VMData():
     vmdata = sp.VMData()
@@ -27,8 +48,6 @@ def generate_vm_data(path: str):
     define_native("clock", clock_native, data_stack, vm_runtime_write_only_main.global_data)
     
     return vm_runtime_read_only_main, vm_runtime_write_only_main, data_stack, initial_context_ptr
-
-
 
 def clock_native(arg_count: int, args):
     return time.process_time()
@@ -58,3 +77,7 @@ def build_instruction_map_and_initial_context(contexts: typing.List[sp.Context])
         if context.context_name == "":
             initial_context_ptr = context_ptr
     return context_map, initial_context_ptr
+
+def new_closure(context: sp.Context):
+    num_of_upvalues = context.upvalue_count
+    return RuntimeClosure(context.function_address, [])

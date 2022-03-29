@@ -18,21 +18,25 @@ class ContextOpcode(betterproto.Enum):
     OP_GET_GLOBAL = 7
     OP_DEFINE_GLOBAL = 8
     OP_SET_GLOBAL = 9
-    OP_EQUAL = 10
-    OP_GREATER = 11
-    OP_LESS = 12
-    OP_ADD = 13
-    OP_SUBTRACT = 14
-    OP_MULTIPLY = 15
-    OP_DIVIDE = 16
-    OP_NOT = 17
-    OP_NEGATE = 18
-    OP_PRINT = 19
-    OP_JUMP = 20
-    OP_JUMP_IF_FALSE = 21
-    OP_LOOP = 22
-    OP_CALL = 23
-    OP_RETURN = 24
+    OP_GET_UPVALUE = 10
+    OP_SET_UPVALUE = 11
+    OP_EQUAL = 12
+    OP_GREATER = 13
+    OP_LESS = 14
+    OP_ADD = 15
+    OP_SUBTRACT = 16
+    OP_MULTIPLY = 17
+    OP_DIVIDE = 18
+    OP_NOT = 19
+    OP_NEGATE = 20
+    OP_PRINT = 21
+    OP_JUMP = 22
+    OP_JUMP_IF_FALSE = 23
+    OP_LOOP = 24
+    OP_CALL = 25
+    OP_CLOSURE = 26
+    OP_CLOSE_UPVALUE = 27
+    OP_RETURN = 28
     OP_PLACEHOLDER = 255
 
 
@@ -51,6 +55,12 @@ class VMDataAddressAndHash(betterproto.Message):
 
 
 @dataclass
+class Upvalue(betterproto.Message):
+    is_local: int = betterproto.int32_field(1)
+    index: int = betterproto.int32_field(2)
+
+
+@dataclass
 class Context(betterproto.Message):
     context_name: str = betterproto.string_field(1)
     instruction_vals: Dict[int, "InstructionType"] = betterproto.map_field(
@@ -62,6 +72,8 @@ class Context(betterproto.Message):
         5, betterproto.TYPE_INT64, betterproto.TYPE_MESSAGE
     )
     arity: int = betterproto.int32_field(6)
+    upvalue_count: int = betterproto.int32_field(7)
+    upvalues: List["Upvalue"] = betterproto.message_field(8)
 
 
 @dataclass

@@ -1,13 +1,12 @@
 from recordclass import recordclass, RecordClass
 from dis import dis
 import sys
-import time
 import types
 import typing
 import operator
 import betterproto
 from lib import serializationPackage as sp
-from vm_data_generator import VMRuntimeReadOnlyData, CallStackSingleElement, generate_vm_data
+from vm_data_generator import VMRuntimeReadOnlyData, VMRuntimeWriteOnlyData, CallStackSingleElement, RuntimeClosure, generate_vm_data, new_closure
 
 CALL_STACK_MAX = 100
 
@@ -91,17 +90,41 @@ def concatenate(str1: str, str2: str):
     return total_str
 
 
-def run(vm_runtime_read_only_main, vm_runtime_write_only_main, data_stack):
+def run(vm_runtime_read_only_main: VMRuntimeReadOnlyData, vm_runtime_write_only_main: VMRuntimeWriteOnlyData, data_stack: typing.List):
     vmRuntimeCallstack = vm_runtime_write_only_main.callstack
 
     while True:
         instruction_value, vmRuntimeCallstack[-1].ip = read_byte(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
-        print("Executing instruction value: " + str(sp.ContextOpcode(instruction_value)))
+        # print("Executing instruction value: " + str(sp.ContextOpcode(instruction_value)))
         if instruction_value == sp.ContextOpcode.OP_CONSTANT:
             constant, vmRuntimeCallstack[-1].ip = read_constant(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
             data_stack.append(constant)
         elif instruction_value == sp.ContextOpcode.OP_PRINT:
             print(data_stack.pop())
+        elif instruction_value == sp.ContextOpcode.OP_CLOSURE:
+            temp_context, vmRuntimeCallstack[-1].ip = read_constant(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
+            closure = new_closure(temp_context)
+            data_stack.append(closure)
+            for i in range(temp_context.upvalue_count): #TODO: Potential for a bug to live here
+                is_local, vmRuntimeCallstack[-1].ip  = read_byte(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
+                index, vmRuntimeCallstack[-1].ip  = read_byte(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
+                if (is_local > 0):
+                    closure.upvalues.append(data_stack[vmRuntimeCallstack[-1].slot_offset + index])
+                else:
+                    closure.upvalues.append(vmRuntimeCallstack[-1].upvalues[index])
+                    
+        elif instruction_value == sp.ContextOpcode.OP_GET_UPVALUE:
+            slot, vmRuntimeCallstack[-1].ip = read_byte(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
+            data_stack.append(vmRuntimeCallstack[-1].upvalues[slot])
+
+        elif instruction_value == sp.ContextOpcode.OP_SET_UPVALUE:
+            slot, vmRuntimeCallstack[-1].ip = read_byte(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
+            vmRuntimeCallstack[-1].upvalues[slot] = data_stack[-1] #TODO: Fix
+            
+
+        elif instruction_value == sp.ContextOpcode.OP_SET_UPVALUE:
+            slot, vmRuntimeCallstack[-1].ip = read_byte(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
+
         elif instruction_value == sp.ContextOpcode.OP_RETURN:
             result = data_stack.pop()
             truncated_end_value = vmRuntimeCallstack[-1].slot_offset
@@ -201,24 +224,26 @@ def run(vm_runtime_read_only_main, vm_runtime_write_only_main, data_stack):
                 return False
 
 def call_value(vm_runtime_read_only_main: VMRuntimeReadOnlyData, call_stack: typing.List[CallStackSingleElement], 
-        data_stack: typing.List, callee_function_context: sp.Context, arg_count: int) -> bool:
+        data_stack: typing.List, callee, arg_count: int) -> bool:
     
-    if isinstance(callee_function_context, types.FunctionType):
-        result = callee_function_context(arg_count, [])
+    #For native functions
+    if isinstance(callee, types.FunctionType):
+        result = callee(arg_count, [])
         del data_stack[len(data_stack) - (arg_count + 1):]
         data_stack.append(result)
         return True
-    elif isinstance(callee_function_context, sp.Context):
-        new_function_address = callee_function_context.function_address
+    elif isinstance(callee, RuntimeClosure):
+        new_function_address = callee.function_ptr
         if (new_function_address not in vm_runtime_read_only_main.contextmap):
             print("Can only call functions and classes")
         else:
             #Todo: Fix
-            return call(vm_runtime_read_only_main, callee_function_context, arg_count, call_stack, data_stack)
+            return call(vm_runtime_read_only_main, callee, arg_count, call_stack, data_stack)
     else:
         runtimeError("Invalid type", vm_runtime_read_only_main, call_stack)
 
-def call(vm_runtime_read_only_main: VMRuntimeReadOnlyData, context: sp.Context, arg_count: int, call_stack: typing.List[CallStackSingleElement], data_stack: typing.List) -> bool:
+def call(vm_runtime_read_only_main: VMRuntimeReadOnlyData, closure: RuntimeClosure, arg_count: int, call_stack: typing.List[CallStackSingleElement], data_stack: typing.List) -> bool:
+    context = vm_runtime_read_only_main.contextmap[closure.function_ptr]
     if (arg_count != context.arity):
         # runtimeError(5, call_stack)
         runtimeError(f'Expected {context.arity} arguments but got {arg_count}', vm_runtime_read_only_main, call_stack)
@@ -227,7 +252,7 @@ def call(vm_runtime_read_only_main: VMRuntimeReadOnlyData, context: sp.Context, 
         # print("Stack overflow")
         runtimeError("Stack overflow", vm_runtime_read_only_main, call_stack)
         return False
-    call_stack.append(CallStackSingleElement(context.function_address, context.first_instruction_address, len(data_stack) -(arg_count + 1)))
+    call_stack.append(CallStackSingleElement(context.function_address, context.first_instruction_address, len(data_stack) -(arg_count + 1), closure.upvalues))
     return True
 
 def main():
@@ -235,7 +260,10 @@ def main():
         print("Usage: plox [script]")
     elif len(sys.argv) == 2:
         (vm_runtime_read_only_main, vm_runtime_write_only_main, data_stack, initial_context_ptr) = generate_vm_data(sys.argv[1])
-        call(vm_runtime_read_only_main, vm_runtime_read_only_main.contextmap[initial_context_ptr], 0, vm_runtime_write_only_main.callstack, data_stack)
+        closure = new_closure(vm_runtime_read_only_main.contextmap[initial_context_ptr])
+        data_stack.pop()
+        data_stack.append(closure)
+        call(vm_runtime_read_only_main, closure, 0, vm_runtime_write_only_main.callstack, data_stack)
         run(vm_runtime_read_only_main, vm_runtime_write_only_main, data_stack)
 
 if __name__ == "__main__":
