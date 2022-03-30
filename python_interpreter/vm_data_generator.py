@@ -31,12 +31,17 @@ class RuntimeClosure:
 @dataclass 
 class LoxClass:
     name: str
+    methods: typing.Dict[str, RuntimeClosure]
 
 @dataclass
 class LoxInstance:
     klass: LoxClass
     fields: typing.Dict[str, typing.Any]
 
+@dataclass
+class RuntimeBoundMethod:
+    lox_instance: LoxInstance
+    closure: RuntimeClosure
 
 def load_vmdata(path: str) -> sp.VMData():
     vmdata = sp.VMData()
