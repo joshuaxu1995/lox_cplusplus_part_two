@@ -28,6 +28,15 @@ class RuntimeClosure:
     function_ptr: int
     upvalues: typing.List[sp.Upvalue]
 
+@dataclass 
+class LoxClass:
+    name: str
+
+@dataclass
+class LoxInstance:
+    klass: LoxClass
+    fields: typing.Dict[str, typing.Any]
+
 
 def load_vmdata(path: str) -> sp.VMData():
     vmdata = sp.VMData()

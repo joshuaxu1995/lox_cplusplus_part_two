@@ -138,6 +138,11 @@ static bool call(ObjClosure* closure, int argCount) {
 static bool callValue(Value callee, int argCount) {
     if (isObj(callee)){
         switch (objType(callee)){
+            case OBJ_CLASS: {
+                ObjClass* klass = asClass(callee);
+                vm.stackTop[-argCount - 1] = objVal((Obj*) newInstance(klass));
+                return true;
+            }
             case OBJ_CLOSURE:
                 return call(asClosure(callee), argCount);
             case OBJ_NATIVE: {
@@ -362,6 +367,10 @@ static InterpretResult run() {
                 frame = &vm.frames[vm.frameCount - 1];
                 break;
             }
+            case OP_CLASS: {
+                push(objVal((Obj*) newClass(readString())));
+                break;
+            }
             case OP_CONSTANT: {
                 Value constant = readConstant();
                 push(constant);
@@ -430,6 +439,36 @@ static InterpretResult run() {
             case OP_CLOSE_UPVALUE: {
                 closeUpvalues(vm.stackTop - 1);
                 pop();
+                break;
+            }
+            case OP_GET_PROPERTY: {
+                if (!isInstance(peek(0))){
+                    runtimeError("Only instances have properties.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                ObjInstance* instance = asInstance(peek(0));
+                ObjString*name = readString();
+
+                Value value;
+                if (tableGet(&instance->fields, name, &value)) {
+                    pop();
+                    push(value);
+                    break;
+                }
+
+                runtimeError("Undefined property '%s'.", name->chars);
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            case OP_SET_PROPERTY: {
+                if (!isInstance(peek(1))){
+                    runtimeError("Only instances have fields.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                ObjInstance* instance = asInstance(peek(1));
+                tableSet(&instance->fields, readString(), peek(0));
+                Value value = pop();
+                pop();
+                push(value);
                 break;
             }
             case OP_EQUAL: {

@@ -6,7 +6,8 @@ import typing
 import operator
 import betterproto
 from lib import serializationPackage as sp
-from vm_data_generator import VMRuntimeReadOnlyData, VMRuntimeWriteOnlyData, CallStackSingleElement, RuntimeClosure, generate_vm_data, new_closure
+from vm_data_generator import VMRuntimeReadOnlyData, VMRuntimeWriteOnlyData, \
+ CallStackSingleElement, RuntimeClosure, generate_vm_data, new_closure, LoxClass, LoxInstance
 
 CALL_STACK_MAX = 100
 
@@ -159,6 +160,31 @@ def run(vm_runtime_read_only_main: VMRuntimeReadOnlyData, vm_runtime_write_only_
             else:
                 value = data_stack[-1]
                 vm_runtime_write_only_main.global_data[name] = value
+        elif instruction_value == sp.ContextOpcode.OP_GET_PROPERTY:
+            instance = data_stack[-1]
+
+            if not isinstance(instance, LoxInstance):
+                runtimeError("Only instances have properties.")
+                return False
+
+            name, vmRuntimeCallstack[-1].ip = read_constant(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
+
+            if (name in instance.fields):
+                value = instance.fields[name]
+                data_stack.pop()
+                data_stack.append(value)
+            else:
+                runtimeError(f"Undefined property \'{name}\'")
+                return False
+        
+        elif instruction_value == sp.ContextOpcode.OP_SET_PROPERTY:
+            instance = data_stack[-2]
+            name, vmRuntimeCallstack[-1].ip = read_constant(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
+            instance.fields[name] = data_stack[-1]
+            value = data_stack.pop()
+            data_stack.pop()
+            data_stack.append(value)
+
         elif instruction_value == sp.ContextOpcode.OP_GET_LOCAL: 
             slot, vmRuntimeCallstack[-1].ip = read_byte(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
             data_stack.append(data_stack[vmRuntimeCallstack[-1].slot_offset + slot])
@@ -222,12 +248,18 @@ def run(vm_runtime_read_only_main: VMRuntimeReadOnlyData, vm_runtime_write_only_
             if (not call_value(vm_runtime_read_only_main, vmRuntimeCallstack, data_stack, 
                     data_stack[-(arg_count + 1)], arg_count)):
                 return False
+        elif instruction_value == sp.ContextOpcode.OP_CLASS:
+            class_name, vmRuntimeCallstack[-1].ip = read_constant(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
+            data_stack.append(LoxClass(class_name))
 
 def call_value(vm_runtime_read_only_main: VMRuntimeReadOnlyData, call_stack: typing.List[CallStackSingleElement], 
         data_stack: typing.List, callee, arg_count: int) -> bool:
     
     #For native functions
-    if isinstance(callee, types.FunctionType):
+    if isinstance(callee, LoxClass):
+        data_stack.append(LoxInstance(callee, {}))
+        return True
+    elif isinstance(callee, types.FunctionType):
         result = callee(arg_count, [])
         del data_stack[len(data_stack) - (arg_count + 1):]
         data_stack.append(result)
