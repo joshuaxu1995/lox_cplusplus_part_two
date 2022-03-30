@@ -71,11 +71,17 @@ static void printFunction(ObjFunction* function){
 
 void printObject(Value value) {
     switch (objType(value)) {
+        case OBJ_CLASS:
+            printf("%s", asClass(value)->name->chars);
+            break;
         case OBJ_CLOSURE:
             printFunction(asClosure(value)->function);
             break;
         case OBJ_FUNCTION:
             printFunction(asFunction(value));
+            break;
+        case OBJ_INSTANCE:
+            printf("%s instance", asInstance(value)->klass->name->chars);
             break;
         case OBJ_NATIVE:
             printf("<native fn>");
@@ -102,6 +108,19 @@ static Obj* allocateObject(size_t size, ObjType type){
     }
 
     return object;
+}
+
+ObjInstance* newInstance(ObjClass* klass){
+    ObjInstance* instance = allocateObj<ObjInstance>(OBJ_INSTANCE);
+    instance->klass = klass;
+    initTable(&instance->fields);
+    return instance;
+}
+
+ObjClass* newClass(ObjString* name) {
+    ObjClass* klass = allocateObj<ObjClass>(OBJ_CLASS);
+    klass->name = name;
+    return klass;
 }
 
 ObjClosure* newClosure(ObjFunction* function){
@@ -133,6 +152,22 @@ ObjNative* newNative(NativeFn function) {
 
 ObjType objType(Value value){
     return asObj(value)->type;
+}
+
+bool isInstance(Value value){
+    return isObjType(value, OBJ_INSTANCE);
+}
+
+ObjInstance* asInstance(Value value){
+    return ((ObjInstance*) asObj(value));
+}
+
+bool isClass(Value value) {
+    return isObjType(value, OBJ_CLASS);
+}
+
+ObjClass* asClass(Value value) {
+    return ((ObjClass*) asObj(value));
 }
 
 bool isClosure(Value value){

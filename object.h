@@ -1,9 +1,12 @@
 #pragma once
 #include "chunk.h"
+#include "table.h"
 
 typedef enum {
+    OBJ_CLASS,
     OBJ_CLOSURE,
     OBJ_FUNCTION,
+    OBJ_INSTANCE,
     OBJ_NATIVE,
     OBJ_STRING,
     OBJ_UPVALUE
@@ -51,6 +54,19 @@ typedef struct {
     int upvalueCount;
 } ObjClosure;
 
+typedef struct {
+    Obj obj;
+    ObjString* name;
+} ObjClass;
+
+typedef struct {
+    Obj obj;
+    ObjClass* klass;
+    Table fields;
+} ObjInstance;
+
+ObjInstance* newInstance(ObjClass* klass);
+ObjClass* newClass(ObjString* name);
 ObjClosure* newClosure(ObjFunction* function);
 ObjFunction* newFunction();
 ObjNative* newNative(NativeFn function);
@@ -67,7 +83,10 @@ static inline bool isObjType(Value value, ObjType type){
     return isObj(value) && asObj(value)->type == type;
 }
 
-
+bool isInstance(Value value);
+ObjInstance* asInstance(Value value);
+bool isClass(Value value);
+ObjClass* asClass(Value value);
 bool isClosure(Value value);
 ObjClosure* asClosure(Value value);
 bool isNative(Value value);
