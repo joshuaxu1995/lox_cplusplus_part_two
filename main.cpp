@@ -64,7 +64,7 @@ int main(int argc, const char *argv[])
 {
     initVM();
     if (argc == 1) {
-        runFile("../test_scripts/four_layers_with_inner_addition_closures.lox");
+        runFile("../test_scripts/classes_with_initializers.lox");
     }
     else if (argc == 2){
         runFile(argv[1]);

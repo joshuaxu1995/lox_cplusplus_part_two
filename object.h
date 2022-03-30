@@ -3,6 +3,7 @@
 #include "table.h"
 
 typedef enum {
+    OBJ_BOUND_METHOD,
     OBJ_CLASS,
     OBJ_CLOSURE,
     OBJ_FUNCTION,
@@ -57,6 +58,7 @@ typedef struct {
 typedef struct {
     Obj obj;
     ObjString* name;
+    Table methods;
 } ObjClass;
 
 typedef struct {
@@ -65,6 +67,13 @@ typedef struct {
     Table fields;
 } ObjInstance;
 
+typedef struct {
+    Obj obj;
+    Value receiver;
+    ObjClosure* method;
+} ObjBoundMethod;
+
+ObjBoundMethod* newBoundMethod(Value receiver, ObjClosure* method);
 ObjInstance* newInstance(ObjClass* klass);
 ObjClass* newClass(ObjString* name);
 ObjClosure* newClosure(ObjFunction* function);
@@ -83,6 +92,8 @@ static inline bool isObjType(Value value, ObjType type){
     return isObj(value) && asObj(value)->type == type;
 }
 
+bool isBoundMethod(Value value);
+ObjBoundMethod* asBoundMethod(Value value);
 bool isInstance(Value value);
 ObjInstance* asInstance(Value value);
 bool isClass(Value value);
