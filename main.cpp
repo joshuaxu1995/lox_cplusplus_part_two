@@ -64,7 +64,7 @@ int main(int argc, const char *argv[])
 {
     initVM();
     if (argc == 1) {
-        runFile("../test_scripts/class_invoke_methods.lox");
+        runFile("../test_scripts/superclasses_1.lox");
     }
     else if (argc == 2){
         runFile(argv[1]);

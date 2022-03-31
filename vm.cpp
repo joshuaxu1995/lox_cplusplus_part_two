@@ -188,7 +188,7 @@ static bool invoke(ObjString* name, int argCount) {
     Value receiver = peek(argCount);
 
     if (!isInstance(receiver)){
-        runtimeError("Only instances have mthods.");
+        runtimeError("Only instances have methods.");
         return false;
     }
     ObjInstance* instance = asInstance(receiver);
@@ -409,6 +409,16 @@ static InterpretResult run() {
                 frame = &vm.frames[vm.frameCount - 1];
                 break;
             }
+            case OP_SUPER_INVOKE: {
+                ObjString* method = readString();
+                int argCount = readByte();
+                ObjClass* superclass = asClass(pop());
+                if (!invokeFromClass(superclass, method, argCount)) {
+                    return INTERPRET_RUNTIME_ERROR;
+                } 
+                frame = &vm.frames[vm.frameCount - 1];
+                break;
+            }
             case OP_CLOSURE: {
                 ObjFunction* function = asFunction(readConstant());
                 ObjClosure* closure = newClosure(function);
@@ -440,6 +450,26 @@ static InterpretResult run() {
             }
             case OP_CLASS: {
                 push(objVal((Obj*) newClass(readString())));
+                break;
+            }
+            case OP_INHERIT: {
+                Value superclass = peek(1);
+                if (!isClass(superclass)){
+                    runtimeError("Superclass must be a class.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                ObjClass* subclass = asClass(peek(0));
+                tableAddAll(&asClass(superclass)->methods, &subclass->methods);
+                pop();
+                break;
+            }
+            case OP_GET_SUPER: {
+                ObjString* name = readString();
+                ObjClass* superclass = asClass(pop());
+
+                if (!bindMethod(superclass, name)) {
+                    return INTERPRET_RUNTIME_ERROR;
+                }
                 break;
             }
             case OP_METHOD:
