@@ -1,3 +1,4 @@
+from typing_extensions import runtime
 from recordclass import recordclass, RecordClass
 from dis import dis
 import sys
@@ -7,7 +8,7 @@ import operator
 import betterproto
 from lib import serializationPackage as sp
 from vm_data_generator import VMRuntimeReadOnlyData, VMRuntimeWriteOnlyData, \
- CallStackSingleElement, RuntimeClosure, generate_vm_data, new_closure, LoxClass, LoxInstance
+ CallStackSingleElement, RuntimeClosure, generate_vm_data, new_closure, LoxClass, LoxInstance, RuntimeBoundMethod
 
 CALL_STACK_MAX = 100
 
@@ -96,7 +97,7 @@ def run(vm_runtime_read_only_main: VMRuntimeReadOnlyData, vm_runtime_write_only_
 
     while True:
         instruction_value, vmRuntimeCallstack[-1].ip = read_byte(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
-        # print("Executing instruction value: " + str(sp.ContextOpcode(instruction_value)))
+        # print("Executing instruction value: " + str(instruction_value) + " and: " + str(sp.ContextOpcode(instruction_value)))
         if instruction_value == sp.ContextOpcode.OP_CONSTANT:
             constant, vmRuntimeCallstack[-1].ip = read_constant(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
             data_stack.append(constant)
@@ -174,8 +175,9 @@ def run(vm_runtime_read_only_main: VMRuntimeReadOnlyData, vm_runtime_write_only_
                 data_stack.pop()
                 data_stack.append(value)
             else:
-                runtimeError(f"Undefined property \'{name}\'")
-                return False
+                if (not bind_method(instance.klass, name, data_stack)):
+                    return False
+
         
         elif instruction_value == sp.ContextOpcode.OP_SET_PROPERTY:
             instance = data_stack[-2]
@@ -250,15 +252,56 @@ def run(vm_runtime_read_only_main: VMRuntimeReadOnlyData, vm_runtime_write_only_
                 return False
         elif instruction_value == sp.ContextOpcode.OP_CLASS:
             class_name, vmRuntimeCallstack[-1].ip = read_constant(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
-            data_stack.append(LoxClass(class_name))
+            data_stack.append(LoxClass(class_name, {}))
+        elif instruction_value == sp.ContextOpcode.OP_METHOD:
+            name, vmRuntimeCallstack[-1].ip = read_constant(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
+            define_method(name, data_stack)
+        elif instruction_value == sp.ContextOpcode.OP_INVOKE:
+            method, vmRuntimeCallstack[-1].ip = read_constant(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
+            arg_count, vmRuntimeCallstack[-1].ip = read_byte(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
+            if not invoke(vm_runtime_read_only_main, method, arg_count, vmRuntimeCallstack, data_stack):
+                return False
+
+def invoke_from_klass(vm_runtime_read_only_main: VMRuntimeReadOnlyData, klass: LoxClass, name: str, arg_count: int, call_stack: typing.List[CallStackSingleElement],
+            data_stack: typing.List) -> bool:
+    if name not in klass.methods:
+        runtimeError(f'Undefined property \'{name}\'', vm_runtime_read_only_main, call_stack)
+        return False
+    method = klass.methods[name]
+    return call(vm_runtime_read_only_main, method, arg_count, call_stack, data_stack)
+
+def invoke(vm_runtime_read_only_main: VMRuntimeReadOnlyData, name: str, arg_count: int, call_stack: typing.List[CallStackSingleElement], 
+            data_stack: typing.List) -> bool:
+    receiver = data_stack[-arg_count - 1]
+
+    if (name in receiver.fields):
+        value = receiver.fields[name]
+        data_stack[-arg_count - 1] = value
+        return call_value(vm_runtime_read_only_main, call_stack, data_stack, value, arg_count)
+
+    return invoke_from_klass(vm_runtime_read_only_main, receiver.klass, name, arg_count, call_stack, data_stack)
+
+def define_method(name: str, data_stack: CallStackSingleElement):
+    method = data_stack[-1]
+    klass: LoxClass = data_stack[-2]
+    klass.methods[name] = method
+    data_stack.pop()
 
 def call_value(vm_runtime_read_only_main: VMRuntimeReadOnlyData, call_stack: typing.List[CallStackSingleElement], 
         data_stack: typing.List, callee, arg_count: int) -> bool:
     
     #For native functions
     if isinstance(callee, LoxClass):
-        data_stack.append(LoxInstance(callee, {}))
+        data_stack[-arg_count - 1] = LoxInstance(callee, {})
+        if ("init" in callee.methods):
+            initializer = callee.methods["init"]
+            return call(vm_runtime_read_only_main, initializer, arg_count, call_stack, data_stack)
+        elif arg_count != 0:
+            runtimeError(f"Expected 0 arguments but got {arg_count}")
         return True
+    elif isinstance(callee, RuntimeBoundMethod):
+        data_stack[-arg_count - 1] = callee.lox_instance
+        return call(vm_runtime_read_only_main, callee.closure, arg_count, call_stack, data_stack)
     elif isinstance(callee, types.FunctionType):
         result = callee(arg_count, [])
         del data_stack[len(data_stack) - (arg_count + 1):]
@@ -273,6 +316,18 @@ def call_value(vm_runtime_read_only_main: VMRuntimeReadOnlyData, call_stack: typ
             return call(vm_runtime_read_only_main, callee, arg_count, call_stack, data_stack)
     else:
         runtimeError("Invalid type", vm_runtime_read_only_main, call_stack)
+
+def bind_method(klass: LoxClass, name: str, data_stack: typing.List) -> bool: 
+    if name not in klass.methods:
+        runtimeError(f'Undefined property \'{name}\'')
+        return False
+    else:
+        method = klass.methods[name]
+        bound = RuntimeBoundMethod(data_stack[-1], method)
+
+        data_stack.pop()
+        data_stack.append(bound)
+        return True
 
 def call(vm_runtime_read_only_main: VMRuntimeReadOnlyData, closure: RuntimeClosure, arg_count: int, call_stack: typing.List[CallStackSingleElement], data_stack: typing.List) -> bool:
     context = vm_runtime_read_only_main.contextmap[closure.function_ptr]

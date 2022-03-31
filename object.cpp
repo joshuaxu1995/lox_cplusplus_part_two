@@ -71,6 +71,9 @@ static void printFunction(ObjFunction* function){
 
 void printObject(Value value) {
     switch (objType(value)) {
+        case OBJ_BOUND_METHOD:
+            printFunction(asBoundMethod(value)->method->function);
+            break;
         case OBJ_CLASS:
             printf("%s", asClass(value)->name->chars);
             break;
@@ -110,6 +113,13 @@ static Obj* allocateObject(size_t size, ObjType type){
     return object;
 }
 
+ObjBoundMethod* newBoundMethod(Value receiver, ObjClosure* method) {
+    ObjBoundMethod* bound = allocateObj<ObjBoundMethod>(OBJ_BOUND_METHOD);
+    bound->receiver = receiver;
+    bound->method = method;
+    return bound;
+}
+
 ObjInstance* newInstance(ObjClass* klass){
     ObjInstance* instance = allocateObj<ObjInstance>(OBJ_INSTANCE);
     instance->klass = klass;
@@ -120,6 +130,7 @@ ObjInstance* newInstance(ObjClass* klass){
 ObjClass* newClass(ObjString* name) {
     ObjClass* klass = allocateObj<ObjClass>(OBJ_CLASS);
     klass->name = name;
+    initTable(&klass->methods);
     return klass;
 }
 
@@ -152,6 +163,14 @@ ObjNative* newNative(NativeFn function) {
 
 ObjType objType(Value value){
     return asObj(value)->type;
+}
+
+bool isBoundMethod(Value value) {
+    return isObjType(value, OBJ_BOUND_METHOD);
+}
+
+ObjBoundMethod* asBoundMethod(Value value){
+    return ((ObjBoundMethod*) asObj(value));
 }
 
 bool isInstance(Value value){

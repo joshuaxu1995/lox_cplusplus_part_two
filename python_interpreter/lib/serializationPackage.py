@@ -36,10 +36,12 @@ class ContextOpcode(betterproto.Enum):
     OP_JUMP_IF_FALSE = 25
     OP_LOOP = 26
     OP_CALL = 27
-    OP_CLOSURE = 28
-    OP_CLOSE_UPVALUE = 29
-    OP_RETURN = 30
-    OP_CLASS = 31
+    OP_INVOKE = 28
+    OP_CLOSURE = 29
+    OP_CLOSE_UPVALUE = 30
+    OP_RETURN = 31
+    OP_CLASS = 32
+    OP_METHOD = 33
     OP_PLACEHOLDER = 255
 
 
