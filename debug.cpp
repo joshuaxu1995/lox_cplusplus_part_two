@@ -142,12 +142,18 @@ int disassembleInstruction(Chunk *chunk, int offset)
             return simpleInstruction("OP_PRINT", offset);
         case OP_CLASS:
             return constantInstruction("OP_CLASS", chunk, offset);
+        case OP_INHERIT:
+            return simpleInstruction("OP_INHERIT", offset);
         case OP_METHOD:
             return constantInstruction("OP_METHOD", chunk, offset);
         case OP_GET_PROPERTY: 
             return constantInstruction("OP_GET_PROPERTY", chunk, offset);
         case OP_SET_PROPERTY:
             return constantInstruction("OP_SET_PROPERTY", chunk, offset);
+        case OP_GET_SUPER:
+            return constantInstruction("OP_GET_SUPER", chunk, offset);
+        case OP_SUPER_INVOKE:
+            return invokeInstruction("OP_SUPER_INVOKE", chunk, offset);
         default:
             std::cerr << "Unknown opcode " << instruction << std::endl;
             return offset + 1;

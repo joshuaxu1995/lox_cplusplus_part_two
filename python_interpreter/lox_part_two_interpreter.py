@@ -261,6 +261,26 @@ def run(vm_runtime_read_only_main: VMRuntimeReadOnlyData, vm_runtime_write_only_
             arg_count, vmRuntimeCallstack[-1].ip = read_byte(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
             if not invoke(vm_runtime_read_only_main, method, arg_count, vmRuntimeCallstack, data_stack):
                 return False
+        elif instruction_value == sp.ContextOpcode.OP_INHERIT:
+            superclass = data_stack[-2]
+            subclass = data_stack[-1]
+            for method in superclass.methods.items():
+                subclass.methods[method[0]] = method[1]
+            data_stack.pop()
+        elif instruction_value == sp.ContextOpcode.OP_GET_SUPER:
+            name, vmRuntimeCallstack[-1].ip = read_constant(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
+            superclass = data_stack.pop()
+
+            if (not bind_method(superclass, name, data_stack)):
+                return False
+
+        elif instruction_value == sp.ContextOpcode.OP_SUPER_INVOKE:
+            method, vmRuntimeCallstack[-1].ip = read_constant(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
+            arg_count, vmRuntimeCallstack[-1].ip = read_byte(vm_runtime_read_only_main, vmRuntimeCallstack[-1])
+            superclass = data_stack.pop()
+      
+            if not invoke_from_klass(vm_runtime_read_only_main, superclass, method, arg_count, vmRuntimeCallstack, data_stack):
+                return False
 
 def invoke_from_klass(vm_runtime_read_only_main: VMRuntimeReadOnlyData, klass: LoxClass, name: str, arg_count: int, call_stack: typing.List[CallStackSingleElement],
             data_stack: typing.List) -> bool:

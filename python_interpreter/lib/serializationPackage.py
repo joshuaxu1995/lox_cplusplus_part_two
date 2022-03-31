@@ -41,7 +41,10 @@ class ContextOpcode(betterproto.Enum):
     OP_CLOSE_UPVALUE = 30
     OP_RETURN = 31
     OP_CLASS = 32
-    OP_METHOD = 33
+    OP_INHERIT = 33
+    OP_GET_SUPER = 34
+    OP_SUPER_INVOKE = 35
+    OP_METHOD = 36
     OP_PLACEHOLDER = 255
 
 
